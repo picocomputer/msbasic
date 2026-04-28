@@ -1,15 +1,18 @@
 ; Picocomputer INPUT/GET/READ. Replaces upstream src/msbasic/input.s.
 ;
 ; Behavior change: a blank Enter at the INPUT prompt no longer silently
-; breaks the program back to OK — instead the empty INPUTBUFFER parses
-; as a 0-length string (or 0 for numeric vars) and the interpreter
-; falls through to the next statement. Upstream's behavior was a silent
-; `clc; jmp CONTROL_C_TYPED`. A user-pressed Ctrl-C still stops the
-; program (INLIN returns A=$03 from rp6502_inlin's @sigint, we route
-; through CONTROL_C_TYPED with C=1 so PRINT_ERROR_LINNUM prints
-; "?BREAK IN <line>" before RESTART). Only blank Enter continues.
-; Upstream conflates the two because most variants can't distinguish
-; them at the I/O layer; the RIA's SIGINT sidechannel can.
+; breaks the program back to OK. For a numeric variable it prints
+; "?REDO FROM START" and re-runs the INPUT statement (same as a
+; malformed numeric response); for a string variable it assigns ""
+; and continues. Empty-as-0 isn't a MS BASIC spec — it was just what
+; FIN did with an empty buffer, which papered over user typos.
+;
+; Upstream collapsed Ctrl-C and blank Enter into a single silent
+; `clc; jmp CONTROL_C_TYPED` because most variants can't distinguish
+; the two at the I/O layer. The RIA's SIGINT sidechannel can: INLIN
+; returns A=$03 from rp6502_inlin's @sigint for Ctrl-C, which we
+; route through CONTROL_C_TYPED with C=1 so PRINT_ERROR_LINNUM
+; prints "?BREAK IN <line>" before RESTART.
 ;
 ; Strips dead .ifdef branches: KBD, APPLE, SYM1, AIM65, MICROTAN,
 ; CBM1, CBM1_PATCHES, CONFIG_SMALL, CONFIG_CBM_ALL, CONFIG_IO_MSB.
@@ -137,9 +140,10 @@ LCB0C:
         bne     L2ABE
         lda     CURDVC
         bne     LCAF8
-        ; Empty INPUT line on plain blank Enter: assign "" / 0
-        ; and continue. X/Y still point at INPUTBUFFER-1 from
-        ; NXIN's INLIN, which PROCESS_INPUT_LIST needs.
+        ; Empty buffer: don't short-circuit here — VALTYP isn't set
+        ; yet. Fall into PROCESS_INPUT_LIST so PTRGET picks the
+        ; numeric vs string path; L2B34 handles ?REDO for numeric,
+        ; STRLT2 builds "" for string.
         jmp     L2ABE
 
 NXIN:
@@ -192,7 +196,7 @@ PROCESS_INPUT_ITEM:
         ldy     #>(INPUTBUFFER-1)
         bra     L2AF8
 L2AF0:
-        bmi     FINDATA             ; READ
+        jmi     FINDATA             ; READ
         lda     CURDVC
         bne     LCB64
         jsr     OUTQUES             ; '?' reprompt for next INPUT var
@@ -238,6 +242,18 @@ L2B28:
 
 ; ----------------------------------------------------------------------------
 L2B34:
+        ; Empty field on the INPUT path → ?REDO FROM START rather
+        ; than FIN-of-empty-as-0. READ ($98) and GET ($40) keep the
+        ; legacy behavior — DATA items and key reads have their own
+        ; conventions. A still holds CHRGET's char (BIT preserves A);
+        ; tax and ldx set N/Z but leave A and C alone, so FIN still
+        ; sees the CHRGET-set "C=0 iff digit" signal it requires.
+        tax
+        bne     @do_fin
+        ldx     INPUTFLG
+        bne     @do_fin
+        jmp     RESPERR
+@do_fin:
         jsr     FIN
         lda     VALTYP+1
         jsr     LET2
