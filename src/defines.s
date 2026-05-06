@@ -29,11 +29,16 @@ CONFIG_11A := 1
 CONFIG_11  := 1
 CONFIG_10A := 1
 
-; --- Picocomputer memory layout ---
-INPUTBUFFER  := __INPUT_START__
-INPUTBUFFERX := INPUTBUFFER & $FF00
-STACK        := $0100
-STACK2       := STACK
+; --- 6502 ---
+STACK          := $0100
+STACK2         := STACK
+
+; --- RP6502 ---
+INPUTBUFFER    := __INPUT_START__
+INPUTBUFFERX   := INPUTBUFFER & $FF00
+MAX_OPEN_FILES := 8                     ; LFTAB size; valid OPEN# lfn range
+                                        ; is 0..MAX_OPEN_FILES-1. Costs that
+                                        ; many bytes of zp.
 
 ; --- BASIC sizing constants ---
 SPACE_FOR_GOSUB := $3E

@@ -5,8 +5,8 @@
 ; stubs come live here.
 ;
 ; The logical-file table LFTAB lives in zero page (zeropage.s);
-; entries are kernel fds, $FF for unused. Lfn 0..15 index directly.
-; Lfn 0 is reserved (BASIC convention: 0 = default I/O).
+; entries are kernel fds, $FF for unused. Valid lfn range is
+; 0..MAX_OPEN_FILES-1 (configured in defines.s), indexed directly.
 ;
 ; Read semantics: a read returning fewer bytes than requested is EOF
 ; (cc65 / RP6502 OS convention; matches loadsave.s). We never loop
@@ -31,8 +31,8 @@
 ; ============================================================
 OPEN:
         jsr     GETBYT                  ; X = lfn
-        cpx     #8
-        bcs     file_err                ; lfn must be 0..7
+        cpx     #MAX_OPEN_FILES
+        bcs     file_err                ; lfn out of range
         lda     LFTAB,x
         cmp     #$FF
         bne     file_err                ; slot already in use
@@ -165,7 +165,7 @@ mode_to_flags:
 ; ============================================================
 CLOSE:
         jsr     GETBYT                  ; X = lfn
-        cpx     #8
+        cpx     #MAX_OPEN_FILES
         bcs     @done                   ; out-of-range → silently ignore
         lda     LFTAB,x
         cmp     #$FF
@@ -207,7 +207,7 @@ INPUTH:
 ; through the file. Preserves X for the caller's stx CURDVC.
 ; ============================================================
 CHKIN:
-        cpx     #8
+        cpx     #MAX_OPEN_FILES
         bcs     @bad
         lda     LFTAB,x
         cmp     #$FF
@@ -228,7 +228,7 @@ CHKIN:
 ; flow control. Preserves X.
 ; ============================================================
 CHKOUT:
-        cpx     #8
+        cpx     #MAX_OPEN_FILES
         bcs     @bad
         lda     LFTAB,x
         cmp     #$FF

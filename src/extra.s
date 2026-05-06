@@ -115,8 +115,8 @@ rp6502_push_string:
 ;   side has invalidated all of them by the time we reach here.
 ; ------------------------------------------------------------
 rp6502_init_io:
-        ; Wipe LFTAB to all $FF (8 slots, lfn 0..7 unused).
-        ldx #7
+        ; Wipe LFTAB to all $FF (no lfn open).
+        ldx #(MAX_OPEN_FILES - 1)
         lda #$FF
 @wipe_lftab:
         sta LFTAB,x
