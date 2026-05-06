@@ -18,12 +18,13 @@
 ; CBM1, CBM1_PATCHES, CONFIG_SMALL, CONFIG_CBM_ALL, CONFIG_IO_MSB.
 ; Collapses always-on conditionals: CONFIG_2/11/11A/10A,
 ; CONFIG_NO_READ_Y_IS_ZERO_HACK, CONFIG_NO_INPUTBUFFER_ZP.
-; CONFIG_FILE branches stay (CHKIN/CLRCH route to rp6502_rts_stub
-; today, harmless).
+; CONFIG_FILE branches stay live: CHKIN/CHKOUT/CLRCH/CURDVC route
+; through file.s for INPUT#/PRINT#/GET#.
 ;
-; INPUT# (INPUTH) is dropped — the keyword is no longer in our
-; tokenizer. LCAD6/LCAD8 survive as a tiny standalone helper because
-; misc1.s and GET still reach into them.
+; INPUTH (INPUT# keyword handler) lives in file.s; it sets up the
+; redirect via CHKIN, then jsr's L2A9E to enter the INPUT body
+; past the prompt-string parse. L2A9E and LCAD6/LCAD8 are the
+; cross-file entry/cleanup points.
 
 .segment "CODE"
 

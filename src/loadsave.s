@@ -135,6 +135,9 @@ lsav_abort:
 lsav_panic:
         lda     tty_fd
         sta     out_fd
+        sta     in_fd                  ; CHKIN may have redirected input
+                                       ; for INPUT#; restore so the next
+                                       ; GET#/INPUT# starts clean
         lda     #<rp6502_inlin
         sta     getln_vec
         lda     #>rp6502_inlin

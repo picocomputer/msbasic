@@ -23,8 +23,22 @@
 ; ------------------------------------------------------------
 ; rp6502_init_io
 ;   Open "tty:" O_WRONLY into tty_fd, "con:" O_RDONLY into con_fd.
+;   Also wipes LFTAB and resets in_fd/out_fd/lsav_fd so a warm
+;   start doesn't carry stale fds from the prior run — the OS
+;   side has invalidated all of them by the time we reach here.
 ; ------------------------------------------------------------
 rp6502_init_io:
+        ; Wipe LFTAB to all $FF (16 slots, lfn 0..15 unused).
+        ldx #15
+        lda #$FF
+@wipe_lftab:
+        sta LFTAB,x
+        dex
+        bpl @wipe_lftab
+        stz in_fd
+        stz out_fd
+        stz lsav_fd
+
         lda #':'
         sta RIA_XSTACK
         lda #'y'
@@ -56,11 +70,16 @@ rp6502_init_io:
         sta con_fd
 
         ; Default MONCOUT target = tty_fd. SAVE temporarily swaps this
-        ; to a file fd to capture LIST output to disk.
+        ; to a file fd to capture LIST output to disk; CHKOUT swaps
+        ; it to a user fd for PRINT#.
         lda tty_fd
         sta out_fd
+        ; Default GET / MONRDKEY source = tty_fd. CHKIN redirects it
+        ; for GET#.
+        sta in_fd
         ; Default GETLN target = rp6502_inlin. LOAD swaps this to its
-        ; own per-byte file-reader, then restores on EOF.
+        ; own per-byte file-reader, then restores on EOF; CHKIN swaps
+        ; it to rp6502_filin for INPUT#.
         lda #<rp6502_inlin
         sta getln_vec
         lda #>rp6502_inlin
@@ -137,16 +156,20 @@ rp6502_chrout:
 
 ; ------------------------------------------------------------
 ; rp6502_getin
-;   Non-blocking read of one byte from "tty:" (raw, no line editor).
-;   Returns A=char or A=0/Z=1 if no byte ready. Preserves X, Y.
-;   Used by GET (MONRDKEY/GETIN) and ISCNTC for break detection.
+;   Non-blocking read of one byte from in_fd (defaults to tty:; CHKIN
+;   redirects it for GET#). Returns A=char or A=0/Z=1 if no byte ready.
+;   Preserves X, Y. Used by GET (MONRDKEY/GETIN). On a redirected fd
+;   at EOF the OS returns 0 too, so we just report "" — GET# never
+;   sets Z96's EOF bit, so a BASIC loop polling a pipe stays clean.
+;   ISCNTC must NOT use this routine — break detection has to keep
+;   reading from tty_fd directly (see rp6502_iscntc below).
 ; ------------------------------------------------------------
 rp6502_getin:
         phx
         phy
         lda #$01
         sta RIA_XSTACK            ; count = 1; hi byte short-stacks to 0
-        lda tty_fd
+        lda in_fd
         sta RIA_A
         lda #RIA_OP_READ_XSTACK
         sta RIA_OP

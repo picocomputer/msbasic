@@ -52,17 +52,10 @@ LOAD   := lsav_load
 SAVE   := lsav_save
 
 ; --- Stubbed keyword handlers (parser tokenizes them, dispatch RTSes) ---
-INPUTH := rp6502_rts_stub              ; INPUT#
-OPEN   := rp6502_rts_stub
-CLOSE  := rp6502_rts_stub
 SYS    := rp6502_rts_stub
-
-; --- Stubbed KERNAL-style I/O hooks (called by upstream's CONFIG_FILE
-;     paths to redirect I/O to/from a fildes; we have no fildes layer
-;     yet, so each is a no-op until file I/O is wired up) ---
-CHKIN  := rp6502_rts_stub              ; switch input device
-CHKOUT := rp6502_rts_stub              ; switch output device
-CLRCH  := rp6502_rts_stub              ; reset I/O to default device
+; INPUTH, OPEN, CLOSE — implemented in file.s.
+; CHKIN, CHKOUT, CLRCH — implemented in file.s (used by PRINTH/CMD,
+; GET#, INPUT, RESTART).
 
 ; --- size math derived from BYTES_FP (replaces defines.s:52-93) ---
 BYTES_FP           := 5

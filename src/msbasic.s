@@ -22,6 +22,7 @@
 .include "program.s"
 .include "flow1.s"
 .include "loadsave.s"
+.include "file.s"
 .include "flow2.s"
 .include "misc1.s"
 .include "print.s"
