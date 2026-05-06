@@ -4,6 +4,13 @@
 ; detokenize
 ; BASIC program memory management
 
+; Tokenize/LIST scratch — aliases on FP scratch zp slots.
+; TEMP3 (2 bytes) and TEMP2 (1 byte) are FP-only (float.s, trig.s),
+; never touched during PARSE_INPUT_LINE or LIST. TEMP1 is reserved
+; for lsav_load_chrin's per-line counter and must NOT be aliased.
+TOKBASE       = TEMP3
+TOKBASE_TOKEN = TEMP2
+
 .segment "CODE"
 
 MEMERR:
@@ -270,6 +277,16 @@ L2484:
 ; WITH CURRENT CHAR FROM INPUT LINE
 ; ----------------------------------------------------------------------------
 L248C:
+        ; Reset bin-A pointer on every matcher entry. Earlier successful
+        ; matches in this line may have left TOKBASE/TOKBASE_TOKEN
+        ; pointing at bin B (e.g. the '=' operator), which would make
+        ; this matcher invocation skip bin A entirely.
+        lda     #<TOKEN_NAME_TABLE_A
+        sta     TOKBASE
+        lda     #>TOKEN_NAME_TABLE_A
+        sta     TOKBASE+1
+        lda     #$80
+        sta     TOKBASE_TOKEN
         sty     STRNG2
         ldy     #$00
         sty     EOLPNTR
@@ -298,11 +315,19 @@ L2498:
         and     #$DF
 L2498_NOFOLD:
         sec
-        sbc     TOKEN_NAME_TABLE,y
+        sbc     (TOKBASE),y
         beq     L2496
         cmp     #$80
         bne     L24D7
         ora     EOLPNTR
+        ; Inject bin base ($80 or $C0) into the matched-token byte.
+        ; A is currently $80 | EOLPNTR; ORing with TOKBASE_TOKEN
+        ; converts to $C0 | EOLPNTR when we're scanning bin B.
+        ; EOLPNTR is bin-local: reset on every L248C entry (fresh
+        ; matcher invocation) and again on bin switch in L24DB. It
+        ; never accumulates across bins — the eval.s TAND/OR reuse
+        ; of this slot is on a different code path.
+        ora     TOKBASE_TOKEN
 ; ----------------------------------------------------------------------------
 ; STORE CHARACTER OR TOKEN IN OUTPUT LINE
 ; ----------------------------------------------------------------------------
@@ -353,11 +378,41 @@ L24D7:
         ldx     TXTPTR
         inc     EOLPNTR
 L24DB:
+        ; Y enters here at the position where the matcher's last sbc
+        ; happened — that byte may be a regular char OR a high-bit
+        ; terminator (mismatch on the LAST byte of a keyword). The
+        ; original code did `lda MATHTBL+28+1,y`, which aliased onto
+        ; TOKEN_NAME_TABLE-1 (MATHTBL+30 fell at the start of the
+        ; KEYWORDS segment in the linker config); the off-by-one
+        ; let one tight loop fold both the in-keyword scan and the
+        ; just-mismatched-terminator case. With two bins we drop the
+        ; alias trick and check the terminator case explicitly.
+        lda     (TOKBASE),y
+        bmi     @past_term      ; already at terminator: just step past
+@scan:
         iny
-        lda     MATHTBL+28+1,y
-        bpl     L24DB
-        lda     TOKEN_NAME_TABLE,y
+        lda     (TOKBASE),y
+        bpl     @scan           ; scan forward to high-bit terminator
+@past_term:
+        iny
+        lda     (TOKBASE),y
         bne     L2498
+        ; Hit the bin's null terminator. If we're still in bin A,
+        ; switch to bin B and resume scanning at its first keyword.
+        ; If already in bin B, treat the input char as a literal.
+        lda     TOKBASE_TOKEN
+        cmp     #$C0
+        bcs     @no_match
+        lda     #<TOKEN_NAME_TABLE_B
+        sta     TOKBASE
+        lda     #>TOKEN_NAME_TABLE_B
+        sta     TOKBASE+1
+        lda     #$C0
+        sta     TOKBASE_TOKEN
+        ldy     #$00            ; index at bin B's first keyword
+        stz     EOLPNTR
+        bra     L2498
+@no_match:
         lda     INPUTBUFFERX,x
         bpl     L24AA
 ; ---END OF LINE------------------
@@ -556,22 +611,36 @@ L25E5:
         rts
 L25E8:
         bpl     L25CE
+        sty     FORPNT          ; save program-memory Y BEFORE clobbering for table lookup
+        ; Bit 7 always set on tokens, so "bit 6 set" ≡ "byte ≥ $C0".
+        ; CMP preserves A and leaves carry already set for bin B's SBC.
+        cmp     #$C0
+        bcs     @bin_b
         sec
-        sbc     #$7F
+        sbc     #$7F            ; A = 1-based index in bin A
+        ldx     #<TOKEN_NAME_TABLE_A
+        ldy     #>TOKEN_NAME_TABLE_A
+        bra     @set_base
+@bin_b:
+        sbc     #$BF            ; A = 1-based index in bin B (carry already set)
+        ldx     #<TOKEN_NAME_TABLE_B
+        ldy     #>TOKEN_NAME_TABLE_B
+@set_base:
+        stx     TOKBASE
+        sty     TOKBASE+1
         tax
-        sty     FORPNT
         ldy     #$FF
 L25F2:
         dex
         beq     L25FD
 L25F5:
         iny
-        lda     TOKEN_NAME_TABLE,y
+        lda     (TOKBASE),y
         bpl     L25F5
         bmi     L25F2
 L25FD:
         iny
-        lda     TOKEN_NAME_TABLE,y
+        lda     (TOKBASE),y
         bmi     L25CA
         jsr     OUTDO
         bra     L25FD
