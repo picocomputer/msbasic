@@ -1,9 +1,9 @@
+.segment "ZPCHRGET"
+CHRGET:        .res chrget_size  ; loaded as an asset
+
 .zeropage
-
-RNDSEED:       .res 5   ; RND state
-
+RNDSEED:       .res 5
 LINNUM:        .res 2
-
 CHARAC:        .res 1
 ENDCHR:        .res 1
 EOLPNTR:       .res 1
@@ -17,7 +17,6 @@ Z14:           .res 1
 CURDVC:        .res 1
 POSX:          .res 1
 Z96:           .res 1
-
 TEMPPT:        .res 1
 LASTPT:        .res 2
 TEMPST:        .res 9
@@ -73,13 +72,6 @@ STRNG1:        .res 2
 SGNCPR       = STRNG1
 FACEXTENSION = STRNG1+1
 STRNG2:        .res 2
-
-CHRGET:        .res chrget_size       ; runtime-copied routine; the
-                                      ; TXTPTR/CHRGOT/CHRGOT2 zp
-                                      ; aliases for the entry points
-                                      ; live in chrget.s next to the
-                                      ; routine they describe.
-
 LFTAB:         .res MAX_OPEN_FILES
                         ; logical-file-number → kernel fd. Valid lfn
                         ; range is 0..MAX_OPEN_FILES-1, indexed

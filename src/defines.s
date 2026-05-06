@@ -9,7 +9,6 @@
 ; --- exported from rp6502.cfg ---
 .import __INPUT_START__
 .import __BASRAM_START__, __BASRAM_SIZE__
-.import __CHRGET_SIZE__
 
 ; --- config flags for mist64 sources ---
 CONFIG_FILE                   := 1     ; TODO file I/O
@@ -43,10 +42,7 @@ MAX_OPEN_FILES := 8                     ; LFTAB size; valid OPEN# lfn range
 ; --- BASIC sizing constants ---
 SPACE_FOR_GOSUB := $3E
 STACK_TOP       := $FF
-chrget_size     := 24                  ; bytes of GENERIC_CHRGET in chrget.s;
-                                       ; zeropage.s .res's this for the
-                                       ; runtime-copied routine, and chrget.s
-                                       ; asserts the assembled length matches
+chrget_size     := 24                  ; bytes of GENERIC_CHRGET in chrget.s
 
 ; --- I/O hooks ---
 ; MONRDKEY/GETIN: non-blocking ("get key if one's ready"), A=0,Z=1 on empty.

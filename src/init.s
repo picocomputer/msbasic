@@ -1,14 +1,6 @@
 .segment "INIT"
 
 COLD_START:
-        ; Copy the GENERIC_CHRGET routine into ZP.
-        ldx #<__CHRGET_SIZE__
-@chrget_copy:
-        lda GENERIC_CHRGET-1, x
-        sta CHRGET-1, x
-        dex
-        bne @chrget_copy
-
         ; Seed RNDSEED with 31 bits of OS entropy. RNDSEED is 5 bytes
         ; of FP: exponent + 4-byte mantissa. Set exponent $80 for a
         ; well-formed value; first RND(positive) normalizes. Bit 7

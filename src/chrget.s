@@ -4,15 +4,20 @@
 ; defined here, so they belong adjacent to the routine.
 ;
 ; CHRGET (the zp base) is defined in zeropage.s with .res
-; chrget_size; COLD_START copies this ROM template into
-; zp[CHRGET..CHRGET+chrget_size-1] at boot.
+; chrget_size; the routine bytes are built into a separate
+; chrget.bin asset (see src/chrget_bare.s + src/chrget_bare.cfg)
+; and loaded by rp6502_asset() to zp at boot, before COLD_START.
 ;
-; The routine is self-modifying once relocated: the address operand
-; of the "lda $EA60" instruction at GENERIC_TXTPTR is what code
-; writes when it stores into TXTPTR / TXTPTR+1. The $EA60 here is
-; just a placeholder; it never actually executes — the relocation
-; into zp happens before the first CHRGET call, and the operand
-; bytes are overwritten by stores to TXTPTR before the lda runs.
+; This file is also .include'd by msbasic.s for the BASIC build.
+; There the CHRGET segment is routed to DUMMY (file="") in
+; rp6502.cfg so the labels resolve for TXTPTR/CHRGOT/CHRGOT2
+; offset math but the routine bytes don't go into BASROM.
+;
+; The routine is self-modifying: the address operand of the
+; "lda $EA60" instruction at GENERIC_TXTPTR is what code writes
+; when it stores into TXTPTR / TXTPTR+1. The $EA60 here is just
+; a placeholder; it never actually executes — the operand bytes
+; are overwritten by stores to TXTPTR before the lda runs.
 
 .segment "CHRGET"
 
