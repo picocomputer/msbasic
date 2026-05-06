@@ -13,6 +13,11 @@
 .include "defines.s"
 .include "macros.s"
 .include "zeropage.s"
+; chrget.s defines TXTPTR / CHRGOT / CHRGOT2 zp aliases. Must come
+; before any file that references them (program.s, eval.s, etc.)
+; otherwise ca65 sees them as undefined and falls back to absolute
+; addressing.
+.include "chrget.s"
 
 .include "header.s"
 .include "token.s"
@@ -35,7 +40,6 @@
 .include "misc3.s"
 .include "poke.s"
 .include "float.s"
-.include "chrget.s"
 .include "rnd.s"
 .include "trig.s"
 .include "init.s"

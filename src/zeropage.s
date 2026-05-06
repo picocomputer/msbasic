@@ -74,6 +74,16 @@ SGNCPR       = STRNG1
 FACEXTENSION = STRNG1+1
 STRNG2:        .res 2
 
+CHRGET:        .res chrget_size       ; runtime-copied routine; the
+                                      ; TXTPTR/CHRGOT/CHRGOT2 zp
+                                      ; aliases for the entry points
+                                      ; live in chrget.s next to the
+                                      ; routine they describe.
+
+LFTAB:         .res 16  ; logical-file-number → kernel fd. lfn 0..15
+                        ; indexes directly. $FF means "slot unused".
+                        ; Wiped to all $FF on every (re)init because
+                        ; warm-start invalidates all OS-side fds.
 tty_fd:        .res 1   ; fd for RP6502 tty: device
 con_fd:        .res 1   ; fd for RP6502 con: device
 out_fd:        .res 1   ; current MONCOUT target; tty_fd by default, redirected by SAVE/CHKOUT
@@ -83,10 +93,6 @@ lsav_fd:       .res 1   ; SAVE/LOAD active fd. Set by both lsav_save
                         ; and lsav_load; doubles as the LOAD-active
                         ; flag (program.s:82 errors on a stray non-
                         ; numbered line while LOAD feeds INLIN).
-LFTAB:         .res 16  ; logical-file-number → kernel fd. lfn 0..15
-                        ; indexes directly. $FF means "slot unused".
-                        ; Wiped to all $FF on every (re)init because
-                        ; warm-start invalidates all OS-side fds.
 getln_vec:     .res 2   ; GETLN indirection; rp6502_inlin by default, swapped by LOAD
 chrout_ptr:    .res 2   ; rp6502_chrout target buffer; non-zero hi → buffer mode
 auto_run:      .res 1   ; cold-boot auto-load + RUN state machine
@@ -95,8 +101,3 @@ auto_run:      .res 1   ; cold-boot auto-load + RUN state machine
                         ;   2..4 = post-EOF emitting "UN\r" through INLIN
                         ;          (the 'R' is emitted directly from
                         ;          the EOF→start_auto_run handoff)
-
-CHRGET:
-TXTPTR  = <(GENERIC_TXTPTR  - GENERIC_CHRGET + CHRGET)
-CHRGOT  = <(GENERIC_CHRGOT  - GENERIC_CHRGET + CHRGET)
-CHRGOT2 = <(GENERIC_CHRGOT2 - GENERIC_CHRGET + CHRGET)

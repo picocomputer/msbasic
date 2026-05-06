@@ -35,6 +35,10 @@ STACK2       := STACK
 ; --- BASIC sizing constants ---
 SPACE_FOR_GOSUB := $3E
 STACK_TOP       := $FF
+chrget_size     := 24                  ; bytes of GENERIC_CHRGET in chrget.s;
+                                       ; zeropage.s .res's this for the
+                                       ; runtime-copied routine, and chrget.s
+                                       ; asserts the assembled length matches
 
 ; --- I/O hooks ---
 ; MONRDKEY/GETIN: non-blocking ("get key if one's ready"), A=0,Z=1 on empty.
