@@ -20,6 +20,93 @@
 
 .segment "EXTRA"
 
+; ============================================================
+; Low-level RIA fastcall helpers, used throughout this file
+; plus loadsave.s, file.s, and init.s. Keeping the rp6502_*
+; family together; the higher-level routines below (chrout,
+; inlin, getin, …) build on these primitives.
+; ============================================================
+
+;---------------------------------------------
+; rp6502_zxstack — synchronous xstack drain.
+; RIA_OP_ZXSTACK is $00 and the op fires on the write to RIA_OP
+; with no SPIN, so this is a single 65C02 stz. Macro keeps the
+; intent named at every call site without paying the jsr/rts
+; cost a real subroutine would.
+.macro rp6502_zxstack
+        stz     RIA_OP
+.endmacro
+
+; ------------------------------------------------------------
+; rp6502_open
+;   In:  A = O_* flags. Filename bytes already pushed to RIA_XSTACK
+;        in reverse order; trailing 0 short-stacks for free.
+;   Out: A/X = SPIN return (kernel fd / hi byte).
+;        C clear on success, C set on errno (X = $FF).
+;   Side effect: consumes the pushed filename either way.
+; ------------------------------------------------------------
+rp6502_open:
+        sta     RIA_A
+        lda     #RIA_OP_OPEN
+        sta     RIA_OP
+        jsr     RIA_SPIN
+        cpx     #$FF
+        bne     :+
+        sec
+        rts
+:       clc
+        rts
+
+; ------------------------------------------------------------
+; rp6502_close
+;   In:  A = kernel fd.
+;   Out: SPIN return; A = bytes-related result, X = errno indicator.
+;   tty:/con: are no-ops in the OS so closing them is harmless.
+; ------------------------------------------------------------
+rp6502_close:
+        sta     RIA_A
+        lda     #RIA_OP_CLOSE
+        sta     RIA_OP
+        jmp     RIA_SPIN              ; tail-call
+
+; ------------------------------------------------------------
+; rp6502_attr_get
+;   In:  A = RIA_ATTR_* id.
+;   Out: A/X = low/high bytes of the attr value (RIA_SPIN
+;        convention). RIA_SREG holds bytes 2..3 for 32-bit
+;        attrs (LRAND).
+; ------------------------------------------------------------
+rp6502_attr_get:
+        sta     RIA_A
+        lda     #RIA_OP_ATTR_GET
+        sta     RIA_OP
+        jmp     RIA_SPIN
+
+; ------------------------------------------------------------
+; rp6502_push_string
+;   Evaluate the next BASIC expression as a string and push its
+;   bytes onto RIA_XSTACK in reverse order. Trailing 0 comes
+;   from short-stacking past the bottom. Errors (?FILE DATA)
+;   on empty string or non-string type via lsav_err_baddata.
+;   Trashes A/X/Y.
+; ------------------------------------------------------------
+rp6502_push_string:
+        jsr     FRMEVL                 ; evaluate expression → FAC
+        jsr     CHKSTR                 ; bomb out if not a string
+        jsr     FREFAC                 ; A=length, INDEX=ptr to bytes
+        tay                            ; Y=length
+        jeq     lsav_err_baddata       ; empty string ⇒ error (long
+                                       ; branch — lsav_err_baddata is
+                                       ; in the CODE segment, beq's
+                                       ; ±127 range can't reach)
+@push_loop:
+        dey                            ; Y goes length-1 → 0
+        lda     (INDEX),y
+        sta     RIA_XSTACK
+        tya
+        bne     @push_loop
+        rts
+
 ; ------------------------------------------------------------
 ; rp6502_init_io
 ;   Open "tty:" O_WRONLY into tty_fd, "con:" O_RDONLY into con_fd.
@@ -28,8 +115,8 @@
 ;   side has invalidated all of them by the time we reach here.
 ; ------------------------------------------------------------
 rp6502_init_io:
-        ; Wipe LFTAB to all $FF (16 slots, lfn 0..15 unused).
-        ldx #15
+        ; Wipe LFTAB to all $FF (8 slots, lfn 0..7 unused).
+        ldx #7
         lda #$FF
 @wipe_lftab:
         sta LFTAB,x
@@ -48,10 +135,7 @@ rp6502_init_io:
         lda #'t'
         sta RIA_XSTACK
         lda #O_WRONLY
-        sta RIA_A
-        lda #RIA_OP_OPEN
-        sta RIA_OP
-        jsr RIA_SPIN
+        jsr rp6502_open
         sta tty_fd
 
         lda #':'
@@ -63,10 +147,7 @@ rp6502_init_io:
         lda #'c'
         sta RIA_XSTACK
         lda #O_RDONLY
-        sta RIA_A
-        lda #RIA_OP_OPEN
-        sta RIA_OP
-        jsr RIA_SPIN
+        jsr rp6502_open
         sta con_fd
 
         ; Default MONCOUT target = tty_fd. SAVE temporarily swaps this
@@ -142,8 +223,7 @@ rp6502_chrout:
         lda out_fd
         cmp tty_fd
         beq @write_drop
-        lda #RIA_OP_ZXSTACK       ; synchronous — no SPIN needed
-        sta RIA_OP
+        rp6502_zxstack
         ply
         plx
         jsr lsav_abort
@@ -256,9 +336,8 @@ rp6502_tab_completion:
                                   ; long before iny could wrap Y to 0
 
 @bad:
-        ; Drain remaining xstack and bail. ZXSTACK is synchronous.
-        lda #RIA_OP_ZXSTACK
-        sta RIA_OP
+        ; Drain remaining xstack and bail.
+        rp6502_zxstack
         rts
 
 @parsed:
@@ -339,10 +418,7 @@ rp6502_inlin:
         ; SIGINT before anything else — once Ctrl-C has latched, we
         ; must not read another con: byte or feed one to the caller.
         lda #RIA_ATTR_SIGINT
-        sta RIA_A
-        lda #RIA_OP_ATTR_GET
-        sta RIA_OP
-        jsr RIA_SPIN
+        jsr rp6502_attr_get
         cmp #$01
         beq @sigint
 
@@ -369,8 +445,7 @@ rp6502_inlin:
 
 @drain_lastkey:
         beq @wait                 ; 0 bytes — nothing on xstack
-        lda #RIA_OP_ZXSTACK       ; multi-byte escape — clear xstack
-        sta RIA_OP                ; ZXSTACK is synchronous; no SPIN
+        rp6502_zxstack
         bra @wait
 
 @sigint:
@@ -392,8 +467,7 @@ rp6502_inlin:
         lda #RIA_OP_READ_XSTACK
         sta RIA_OP
         jsr RIA_SPIN
-        lda #RIA_OP_ZXSTACK
-        sta RIA_OP
+        rp6502_zxstack
 
         ; Return A=$03 as the cancel sentinel. Our INLIN matches it
         ; via `cmp #$03; beq @cancel`, resets its accumulator, and
@@ -443,10 +517,7 @@ rp6502_iscntc:
         lda chrout_ptr+1          ; tab completion in progress: skip
         bne @done                 ; (see header comment)
         lda #RIA_ATTR_SIGINT
-        sta RIA_A
-        lda #RIA_OP_ATTR_GET
-        sta RIA_OP
-        jsr RIA_SPIN
+        jsr rp6502_attr_get
         cmp #$01
         bne @done
         lda #$FF                  ; drain tty: of the user's Ctrl-C
@@ -456,8 +527,7 @@ rp6502_iscntc:
         lda #RIA_OP_READ_XSTACK
         sta RIA_OP
         jsr RIA_SPIN
-        lda #RIA_OP_ZXSTACK       ; sets A=0, Z=1 for STOP entry
-        sta RIA_OP
+        rp6502_zxstack
         jsr lsav_abort            ; restore I/O if SAVE was mid-LIST
         sec                       ; C=1 for STOP entry
         jmp STOP
@@ -477,10 +547,7 @@ rp6502_iscntc:
 ; ------------------------------------------------------------
 rp6502_lrand:
         lda #RIA_ATTR_LRAND
-        sta RIA_A
-        lda #RIA_OP_ATTR_GET
-        sta RIA_OP
-        jmp RIA_SPIN              ; tail-call: RIA_SPIN's RTS returns to caller
+        jmp rp6502_attr_get       ; tail-call
 
 ; ------------------------------------------------------------
 ; rp6502_linprt — like upstream LINPRT but skips the leading

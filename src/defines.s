@@ -6,7 +6,10 @@
 ; CBM/CBM_ALL/DATAFLG/SCRTCH_ORDER markers — those only gate code paths
 ; in our owned files, which we strip.
 
+; --- exported from rp6502.cfg ---
 .import __INPUT_START__
+.import __BASRAM_START__, __BASRAM_SIZE__
+.import __CHRGET_SIZE__
 
 ; --- config flags for mist64 sources ---
 CONFIG_FILE                   := 1     ; TODO file I/O
@@ -51,15 +54,8 @@ CHRIN    := rp6502_inlin
 CHROUT   := rp6502_chrout
 GETIN    := rp6502_getin
 
-; --- SAVE/LOAD routed to RIA-backed file I/O in loadsave.s ---
-LOAD   := lsav_load
-SAVE   := lsav_save
-
 ; --- Stubbed keyword handlers (parser tokenizes them, dispatch RTSes) ---
 SYS    := rp6502_rts_stub
-; INPUTH, OPEN, CLOSE — implemented in file.s.
-; CHKIN, CHKOUT, CLRCH — implemented in file.s (used by PRINTH/CMD,
-; GET#, INPUT, RESTART).
 
 ; --- size math derived from BYTES_FP (replaces defines.s:52-93) ---
 BYTES_FP           := 5

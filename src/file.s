@@ -31,10 +31,8 @@
 ; ============================================================
 OPEN:
         jsr     GETBYT                  ; X = lfn
-        cpx     #16
-        bcs     file_err                ; lfn must be 0..15
-        cpx     #$01
-        bcc     file_err                ; lfn 0 reserved
+        cpx     #8
+        bcs     file_err                ; lfn must be 0..7
         lda     LFTAB,x
         cmp     #$FF
         bne     file_err                ; slot already in use
@@ -49,7 +47,7 @@ OPEN:
         lda     #','
         jsr     SYNCHR                  ; require comma before name
 
-        jsr     lsav_push_filename      ; FRMEVL → CHKSTR → push reversed
+        jsr     rp6502_push_string      ; FRMEVL → CHKSTR → push reversed
                                         ; bytes onto RIA_XSTACK; null
                                         ; terminator short-stacks for free.
                                         ; From here on, any abort before
@@ -70,13 +68,8 @@ OPEN:
 @default_mode:
         lda     #O_RDONLY
 @open:
-        sta     RIA_A
-        lda     #RIA_OP_OPEN
-        sta     RIA_OP
-        jsr     RIA_SPIN                ; OPEN consumes xstack on success
-                                        ; AND on errno return.
-        cpx     #$FF                    ; X=$FF on errno
-        beq     @open_failed
+        jsr     rp6502_open             ; consumes xstack on success or errno
+        bcs     @open_failed
         tay                             ; save kernel fd; pla clobbers A
         pla                             ; A = lfn
         tax
@@ -90,12 +83,10 @@ OPEN:
 file_err:
         jmp     lsav_err_baddata        ; ?FILE DATA ERROR
 
-; Same destination, but first drains any pushed xstack bytes via
-; the synchronous ZXSTACK op. Used by error paths between
-; lsav_push_filename and RIA_OP_OPEN.
+; Same destination, but first drains any pushed xstack bytes.
+; Used by error paths between lsav_push_filename and rp6502_open.
 file_err_zx:
-        lda     #RIA_OP_ZXSTACK
-        sta     RIA_OP
+        rp6502_zxstack
         jmp     lsav_err_baddata
 
 ; ------------------------------------------------------------
@@ -174,19 +165,14 @@ mode_to_flags:
 ; ============================================================
 CLOSE:
         jsr     GETBYT                  ; X = lfn
-        cpx     #16
+        cpx     #8
         bcs     @done                   ; out-of-range → silently ignore
         lda     LFTAB,x
         cmp     #$FF
         beq     @done                   ; already closed
-        pha                             ; save lfn across the spin
-        phx
-        sta     RIA_A
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
+        phx                             ; save lfn across the close
+        jsr     rp6502_close
         plx
-        pla
         lda     #$FF
         sta     LFTAB,x
 @done:
@@ -221,7 +207,7 @@ INPUTH:
 ; through the file. Preserves X for the caller's stx CURDVC.
 ; ============================================================
 CHKIN:
-        cpx     #16
+        cpx     #8
         bcs     @bad
         lda     LFTAB,x
         cmp     #$FF
@@ -242,7 +228,7 @@ CHKIN:
 ; flow control. Preserves X.
 ; ============================================================
 CHKOUT:
-        cpx     #16
+        cpx     #8
         bcs     @bad
         lda     LFTAB,x
         cmp     #$FF

@@ -18,6 +18,7 @@
 ; otherwise ca65 sees them as undefined and falls back to absolute
 ; addressing.
 .include "chrget.s"
+.include "extra.s"
 
 .include "header.s"
 .include "token.s"
@@ -43,5 +44,4 @@
 .include "rnd.s"
 .include "trig.s"
 .include "init.s"
-.include "extra.s"
 .include "caps.s"

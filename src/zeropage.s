@@ -80,7 +80,7 @@ CHRGET:        .res chrget_size       ; runtime-copied routine; the
                                       ; live in chrget.s next to the
                                       ; routine they describe.
 
-LFTAB:         .res 16  ; logical-file-number → kernel fd. lfn 0..15
+LFTAB:         .res 8   ; logical-file-number → kernel fd. lfn 0..7
                         ; indexes directly. $FF means "slot unused".
                         ; Wiped to all $FF on every (re)init because
                         ; warm-start invalidates all OS-side fds.
@@ -89,8 +89,8 @@ con_fd:        .res 1   ; fd for RP6502 con: device
 out_fd:        .res 1   ; current MONCOUT target; tty_fd by default, redirected by SAVE/CHKOUT
 in_fd:         .res 1   ; current input source for GET/INLIN's per-byte reads;
                         ; tty_fd by default, redirected by CHKIN
-lsav_fd:       .res 1   ; SAVE/LOAD active fd. Set by both lsav_save
-                        ; and lsav_load; doubles as the LOAD-active
+lsav_fd:       .res 1   ; SAVE/LOAD active fd. Set by both SAVE
+                        ; and LOAD; doubles as the LOAD-active
                         ; flag (program.s:82 errors on a stray non-
                         ; numbered line while LOAD feeds INLIN).
 getln_vec:     .res 2   ; GETLN indirection; rp6502_inlin by default, swapped by LOAD

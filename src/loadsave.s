@@ -26,27 +26,9 @@
 
 .segment "CODE"
 
-; ============================================================
-; Filename helper: evaluate the next expression as a string and
-; push its bytes (in reverse) plus a trailing null to RIA_XSTACK,
-; ready for an OPEN call.
-; Trashes A/X/Y. Errors out on empty string or non-string type.
-; ============================================================
-lsav_push_filename:
-        jsr     FRMEVL                 ; evaluate expression → FAC
-        jsr     CHKSTR                 ; bomb out if not a string
-        jsr     FREFAC                 ; A=length, INDEX=ptr to bytes
-        tay                            ; Y=length
-        beq     lsav_err_baddata       ; empty filename ⇒ error
-        ; Filename only; the trailing 0 terminator OPEN expects
-        ; comes from short-stacking past the bottom of xstack.
-@push_loop:
-        dey                            ; Y goes length-1 → 0
-        lda     (INDEX),y
-        sta     RIA_XSTACK
-        tya
-        bne     @push_loop
-        rts
+; The filename-pushing helper formerly here moved to extra.s as
+; rp6502_push_string; defines.s aliases lsav_push_filename to it
+; so existing call sites still link.
 
 lsav_err_baddata:
         ldx     #ERR_BADDATA
@@ -58,15 +40,11 @@ lsav_err_baddata:
 ; to the file fd, JSR LIST to detokenize the program, restore
 ; MONCOUT back to tty, close the file.
 ; ============================================================
-lsav_save:
-        jsr     lsav_push_filename
+SAVE:
+        jsr     rp6502_push_string
         lda     #O_WRONLY | O_CREAT | O_TRUNC
-        sta     RIA_A
-        lda     #RIA_OP_OPEN
-        sta     RIA_OP
-        jsr     RIA_SPIN
-        cpx     #$FF                   ; X=$FF on api_return_errno(-1)
-        beq     lsav_err_baddata
+        jsr     rp6502_open
+        bcs     lsav_err_baddata
         sta     lsav_fd
         sta     out_fd                 ; redirect chrout to the file
 
@@ -88,10 +66,7 @@ lsav_save:
         sta     out_fd
         lda     lsav_fd
         stz     lsav_fd
-        sta     RIA_A
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
+        jsr     rp6502_close
         cpx     #$FF
         beq     lsav_err_baddata       ; flush failed ⇒ file truncated
         rts
@@ -112,10 +87,7 @@ lsav_abort:
         lda     tty_fd
         sta     out_fd
         lda     lsav_fd
-        sta     RIA_A
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
+        jsr     rp6502_close
         stz     lsav_fd
 @done:
         rts
@@ -145,12 +117,9 @@ lsav_panic:
         stz     auto_run
         lda     lsav_fd
         beq     @done
-        sta     RIA_A
         stz     lsav_fd
         phx
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
+        jsr     rp6502_close
         plx
 @done:
         rts
@@ -162,15 +131,11 @@ lsav_panic:
 ; feeds bytes from the file; on EOF it closes the file, restores
 ; the default GETLN, resets the stack, and jmps to RESTART.
 ; ============================================================
-lsav_load:
-        jsr     lsav_push_filename
+LOAD:
+        jsr     rp6502_push_string
         lda     #O_RDONLY
-        sta     RIA_A
-        lda     #RIA_OP_OPEN
-        sta     RIA_OP
-        jsr     RIA_SPIN
-        cpx     #$FF
-        jeq     lsav_err_baddata
+        jsr     rp6502_open
+        jcs     lsav_err_baddata
         sta     lsav_fd
         stz     TEMP1                  ; LOAD borrows TEMP1 as the
                                        ; per-line byte counter (float/
@@ -197,10 +162,7 @@ lsav_load:
 ; ============================================================
 lsav_load_err:
         lda     lsav_fd
-        sta     RIA_A
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
+        jsr     rp6502_close
         lda     #<rp6502_inlin
         sta     getln_vec
         lda     #>rp6502_inlin
@@ -273,10 +235,7 @@ lsav_load_chrin:
         ; STROUT below clobbers chrout's scratch slots, but X/Y are on
         ; the 6502 stack from entry, safe there.
         lda     lsav_fd
-        sta     RIA_A
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
+        jsr     rp6502_close
         stz     lsav_fd                ; clear LOAD-active flag
 
         lda     auto_run

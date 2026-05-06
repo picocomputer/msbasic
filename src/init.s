@@ -1,5 +1,3 @@
-.import __BASRAM_START__, __BASRAM_SIZE__, __CHRGET_SIZE__
-
 .segment "INIT"
 
 COLD_START:
@@ -107,8 +105,7 @@ COLD_START:
         sta INPUTBUFFER,y
         iny
         bne @argv_pop
-        lda #RIA_OP_ZXSTACK
-        sta RIA_OP
+        rp6502_zxstack
 
         ; Walk argv[1..]: each -c[0-2] updates the caps mode (last
         ; one wins); the first non-flag argument is remembered as
@@ -198,12 +195,8 @@ COLD_START:
         bne @argv_push
 
         lda #O_RDONLY
-        sta RIA_A
-        lda #RIA_OP_OPEN
-        sta RIA_OP
-        jsr RIA_SPIN
-        cpx #$FF
-        beq @argv_open_failed     ; same path as a typed LOAD failure
+        jsr rp6502_open
+        bcs @argv_open_failed     ; same path as a typed LOAD failure
         sta lsav_fd
         stz TEMP1                 ; lsav_load_chrin's per-line byte
                                   ; counter; must start at 0 (see
