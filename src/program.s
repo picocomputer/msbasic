@@ -415,7 +415,15 @@ L24DB:
 @no_match:
         lda     INPUTBUFFERX,x
         bpl     L24AA
-; ---END OF LINE------------------
+        ; High-bit byte outside a string literal — neither a keyword
+        ; (the bmi guard in L2498 prevented a match) nor a valid
+        ; literal char. Substitute $7F and let the line tokenize so
+        ; the user can edit it; the parser will syntax-error on the
+        ; $7F at run time. (Upstream silently truncated the line
+        ; here, which made the bad input invisible until LIST.)
+        lda     #$7F
+        bra     L24AA
+; ---END OF LINE — reached via L24AC's beq when a $00 has been stored.
 L24EA:
         sta     INPUTBUFFER-3,y
         dec     TXTPTR+1
