@@ -530,12 +530,3 @@ rp6502_linprt:
         ldy     #$00
         jsr     FOUT1
         jmp     STROUT
-
-; ------------------------------------------------------------
-; rp6502_rts_stub — no-op for unimplemented keywords and kernel
-; routines. Plain RTS: a keyword stubbed here will SYNERR if the
-; user supplies arguments, which is intentional ("not yet
-; implemented" rather than silently swallowing input).
-; ------------------------------------------------------------
-rp6502_rts_stub:
-        rts

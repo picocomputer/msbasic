@@ -29,9 +29,6 @@ MAX_OPEN_FILES := 8 ; LFTAB size; valid OPEN# lfn range, 1 zp each
 SPACE_FOR_GOSUB := $3E
 STACK_TOP       := $FF
 
-; --- Stubbed keyword handlers (parser tokenizes them, dispatch RTSes) ---
-SYS    := rp6502_rts_stub
-
 ; --- size math derived from BYTES_FP (replaces defines.s:52-93) ---
 BYTES_FP           := 5
 BYTES_PER_ELEMENT  := BYTES_FP

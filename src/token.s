@@ -29,7 +29,6 @@
         keyword_rts "LIST", LIST
         keyword_rts "CLEAR", CLEAR
         keyword_rts "CMD", CMD
-        keyword_rts "SYS", SYS
         keyword_rts "OPEN", OPEN
         keyword_rts "CLOSE", CLOSE
         keyword_rts "GET", GET
