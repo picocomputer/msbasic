@@ -6,10 +6,6 @@
 ; CBM/CBM_ALL/DATAFLG/SCRTCH_ORDER markers — those only gate code paths
 ; in our owned files, which we strip.
 
-; --- exported from rp6502.cfg ---
-.import __INPUT_START__
-.import __BASRAM_START__, __BASRAM_SIZE__
-
 ; --- config flags for mist64 sources ---
 CONFIG_FILE                   := 1     ; TODO file I/O
 CONFIG_NO_CR                  := 1     ; no auto-CR, terminal line wraps
@@ -42,7 +38,6 @@ MAX_OPEN_FILES := 8                     ; LFTAB size; valid OPEN# lfn range
 ; --- BASIC sizing constants ---
 SPACE_FOR_GOSUB := $3E
 STACK_TOP       := $FF
-chrget_size     := 24                  ; bytes of GENERIC_CHRGET in chrget.s
 
 ; --- I/O hooks ---
 ; MONRDKEY/GETIN: non-blocking ("get key if one's ready"), A=0,Z=1 on empty.

@@ -1,6 +1,3 @@
-.segment "ZPCHRGET"
-CHRGET:        .res chrget_size  ; loaded as an asset
-
 .zeropage
 RNDSEED:       .res 5
 LINNUM:        .res 2

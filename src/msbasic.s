@@ -1,26 +1,21 @@
-; Picocomputer 6502 BASIC top-level. Mirrors upstream src/msbasic/msbasic.s.
-;
-; Each .include "<file>.s" resolves to src/<file>.s first (the current-
-; file-directory search precedes --asm-include-dir), so any file we
-; shadow under src/ wins; the rest fall through to src/msbasic/<file>.s.
-
 .debuginfo +
 .macpack longbranch
 
+; --- exported from rp6502.cfg ---
+.import __INPUT_START__
+.import __BASRAM_START__, __BASRAM_SIZE__
+
+; --- cc65 library includes ---
 .include "rp6502.inc"
 .include "fcntl.inc"
 
+; --- our application code ---
 .include "defines.s"
 .include "macros.s"
-.include "zeropage.s"
-; chrget.s defines TXTPTR / CHRGOT / CHRGOT2 zp aliases. Must come
-; before any file that references them (program.s, eval.s, etc.)
-; otherwise ca65 sees them as undefined and falls back to absolute
-; addressing.
 .include "chrget.s"
-.include "extra.s"
-
+.include "zeropage.s"
 .include "header.s"
+.include "extra.s"
 .include "token.s"
 .include "error.s"
 .include "message.s"
