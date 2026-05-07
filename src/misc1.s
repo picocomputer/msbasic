@@ -1,17 +1,3 @@
-; Picocomputer misc1. Replaces upstream src/msbasic/misc1.s.
-;
-; Strips dead branches: AIM65 (LB89D), CONFIG_CBM_ALL (TI$ assignment
-; in PUTSTR), CONFIG_SMALL (collapse to non-SMALL paths). Keeps
-; CONFIG_FILE for PRINTH/CMD.
-;
-; Behavior fix: LINGET's overflow path no longer branches to ON's
-; mid-routine entry (L28A0). For 6-digit line numbers in the range
-; 437760..440319 — whose first 5 digits land LINNUM in $AB00..$ABFF
-; — the upstream `bcs L28A0` carried A=$AB into ON's `cmp #TOKEN_GOTO`
-; ($AB), match-fell into the GOTO arm with garbage stack, and JMPed
-; through token dispatch to whatever happened to be there. Replaced
-; with a direct `jmp SYNERR` so every overflow value errors cleanly.
-
 .segment "CODE"
 
 ; ----------------------------------------------------------------------------
@@ -147,7 +133,6 @@ L2963:
         sta     (FORPNT),y
         rts
 
-.ifdef CONFIG_FILE
 PRINTH:
         jsr     CMD
         jmp     LCAD6
@@ -162,4 +147,3 @@ LC98F:
         stx     CURDVC
         plp
         jmp     PRINT
-.endif

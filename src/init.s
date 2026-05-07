@@ -158,8 +158,8 @@ COLD_START:
         bra @argv_loop
 
 @argv_done:
-        ; Apply caps mode (default or -c<n>); rln_caps_set takes X.
-        jsr rln_caps_set
+        ; Apply caps mode (default or -c<n>); rp6502_caps_set takes X.
+        jsr rp6502_caps_set
 
         ; If a filename was found, push it and auto-load.
         lda DEST+1

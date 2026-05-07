@@ -247,9 +247,9 @@ CLRCH:
         lda     tty_fd
         sta     out_fd
         sta     in_fd
-        lda     #<rp6502_inlin
+        lda     #<CHRIN
         sta     getln_vec
-        lda     #>rp6502_inlin
+        lda     #>CHRIN
         sta     getln_vec+1
         rts
 

@@ -1,31 +1,4 @@
-; Picocomputer 6502 RIA-backed I/O routines. Replaces the variant-
-; specific src/msbasic/extra.s (which is empty for non-variant builds).
-;
-; All RIA fastcalls follow the same pattern (see the OS docs at
-; https://picocomputer.github.io/os.html, "A regs:" line per syscall):
-;   - Push args to RIA_XSTACK (LIFO; bytes past the end short-stack
-;     to 0, so trailing zeros usually don't need to be pushed).
-;   - Set the fd / flag in RIA_A. For 8-bit args RIA_X is unused.
-;   - Write the op code to RIA_OP — this triggers the RIA and sets
-;     BUSY. (Exception: RIA_OP_ZXSTACK is synchronous and needs no
-;     SPIN.)
-;   - JSR RIA_SPIN — CPU spins on a BRA-to-self until the RIA flips
-;     it to LDA #imm / LDX #imm / RTS at $FFF1, returning the
-;     syscall result in A and X (low/high). RIA_SPIN clobbers A and
-;     X — save them first if you need them across the call.
-;   - GOTCHA: the trailing LDX in RIA_SPIN's return sequence sets Z
-;     from the high byte, not A. Don't rely on Z reflecting A right
-;     after JSR RIA_SPIN — re-establish flags with `lda RIA_A` or a
-;     `cmp #imm` before branching.
-
 .segment "EXTRA"
-
-; ============================================================
-; Low-level RIA fastcall helpers, used throughout this file
-; plus loadsave.s, file.s, and init.s. Keeping the rp6502_*
-; family together; the higher-level routines below (CHROUT,
-; inlin, getin, …) build on these primitives.
-; ============================================================
 
 ;---------------------------------------------
 ; rp6502_zxstack — synchronous xstack drain.
@@ -158,12 +131,12 @@ rp6502_init_io:
         ; Default GET / GETIN source = tty_fd. CHKIN redirects it
         ; for GET#.
         sta in_fd
-        ; Default GETLN target = rp6502_inlin. LOAD swaps this to its
+        ; Default GETLN target = CHRIN. LOAD swaps this to its
         ; own per-byte file-reader, then restores on EOF; CHKIN swaps
         ; it to rp6502_filin for INPUT#.
-        lda #<rp6502_inlin
+        lda #<CHRIN
         sta getln_vec
-        lda #>rp6502_inlin
+        lda #>CHRIN
         sta getln_vec+1
         rts
 
@@ -241,8 +214,6 @@ CHROUT:
 ;   Preserves X, Y. Used by GET. On a redirected fd
 ;   at EOF the OS returns 0 too, so we just report "" — GET# never
 ;   sets Z96's EOF bit, so a BASIC loop polling a pipe stays clean.
-;   ISCNTC must NOT use this routine — break detection has to keep
-;   reading from tty_fd directly (see rp6502_iscntc below).
 ; ------------------------------------------------------------
 GETIN:
         phx
@@ -268,17 +239,11 @@ GETIN:
 
 ; ------------------------------------------------------------
 ; rp6502_tab_completion
-;   Called from rp6502_inlin's wait loop when the user presses TAB.
+;   Called from CHRIN's wait loop when the user presses TAB.
 ;   Peeks the current readline buffer; if it parses as a single
 ;   decimal line number that exists in the program, replaces the
 ;   editor's contents with `<lineno> <detokenized text>` so the
 ;   user can edit the line in place.
-;
-;   Aborts silently (no visible effect) on empty buffer, non-digit
-;   chars, decimal overflow, or unknown line number.
-;
-;   Uses INPUTBUFFER as scratch for the listing — INLIN won't read
-;   the buffer until rp6502_inlin returns, so we own it here.
 ; ------------------------------------------------------------
 rp6502_tab_completion:
         ; --- Phase A: peek current readline buffer onto xstack. ---
@@ -398,7 +363,7 @@ esc_clear_line: .byte $1B, '[', 'H', $1B, '[', '2', '5', '6', 'P'
 esc_clear_line_end:
 
 ; ------------------------------------------------------------
-; rp6502_inlin
+; CHRIN
 ;   Blocking read of one byte from "con:" (line-cooked). MS BASIC's
 ;   GETLN calls this to assemble interactive lines and INPUT replies;
 ;   "con:" delivers a line ending in LF (per the OS), translated to
@@ -411,7 +376,6 @@ esc_clear_line_end:
 ;   read_xstack call succeeds on the first try (the line is queued
 ;   end-to-end), so the side polls run only while the user is typing.
 ; ------------------------------------------------------------
-rp6502_inlin:
 CHRIN:
         phx
         phy
@@ -493,7 +457,7 @@ CHRIN:
         rts
 
 ; ------------------------------------------------------------
-; rp6502_iscntc — break detection via OS sidechannel.
+; ISCNTC — break detection via OS sidechannel.
 ;   ria_attr_get(RIA_ATTR_SIGINT) returns the latched Ctrl-C flag
 ;   and clears it atomically (com_get_sigint in the RIA OS), so
 ;   the SIGINT poll itself doesn't compete with GET for tty: bytes.
@@ -514,7 +478,6 @@ CHRIN:
 ;   ISCNTC mid-listing, and a STOP from there would unwind with
 ;   CHROUT still routed to the buffer.
 ; ------------------------------------------------------------
-rp6502_iscntc:
 ISCNTC:
         lda chrout_ptr+1          ; tab completion in progress: skip
         bne @done                 ; (see header comment)

@@ -1,8 +1,3 @@
-; Key change vs. upstream: L29B9 (INLIN line termination) RETURNS without
-; falling into CRDO. The host terminal already advanced its line on the
-; user's Enter, so an extra CRLF would produce a stray blank line on every
-; input.
-
 .segment "CODE"
 
 ; ----------------------------------------------------------

@@ -17,18 +17,8 @@
 ; through STKINI (which rebases SP to STACK_TOP every line) — that
 ; makes calling NUMBERED_LINE as a subroutine impossible, so we let
 ; the existing tail-jump architecture do the work.
-;
-; Both routines parse a string-valued filename via FRMEVL.
-;
-; Regular file I/O on the RP6502 is blocking: each syscall completes
-; with bytes_transferred == requested or returns -1 with errno set.
-; A short read therefore means EOF; we don't retry.
 
 .segment "CODE"
-
-; The filename-pushing helper formerly here moved to extra.s as
-; rp6502_push_string; defines.s aliases lsav_push_filename to it
-; so existing call sites still link.
 
 lsav_err_baddata:
         ldx     #ERR_BADDATA
@@ -77,7 +67,7 @@ SAVE:
 ; message goes there (not into the save file), closes the file
 ; fd, and clears the LOAD-active flag. A no-op when out_fd is
 ; already tty (the only redirector is SAVE). Called from
-; rp6502_iscntc before jmp STOP; STKINI in the STOP→ERROR→RESTART
+; ISCNTC before jmp STOP; STKINI in the STOP→ERROR→RESTART
 ; path resets SP, so we don't preserve registers.
 ; ============================================================
 lsav_abort:
@@ -110,9 +100,9 @@ lsav_panic:
         sta     in_fd                  ; CHKIN may have redirected input
                                        ; for INPUT#; restore so the next
                                        ; GET#/INPUT# starts clean
-        lda     #<rp6502_inlin
+        lda     #<CHRIN
         sta     getln_vec
-        lda     #>rp6502_inlin
+        lda     #>CHRIN
         sta     getln_vec+1
         stz     auto_run
         lda     lsav_fd
@@ -163,9 +153,9 @@ LOAD:
 lsav_load_err:
         lda     lsav_fd
         jsr     rp6502_close
-        lda     #<rp6502_inlin
+        lda     #<CHRIN
         sta     getln_vec
-        lda     #>rp6502_inlin
+        lda     #>CHRIN
         sta     getln_vec+1
         stz     lsav_fd
         stz     auto_run               ; cancel any pending auto-run
@@ -243,9 +233,9 @@ lsav_load_chrin:
         beq     @start_auto_run
 
         ; Normal LOAD EOF: restore vec, print "OK", return CR.
-        lda     #<rp6502_inlin
+        lda     #<CHRIN
         sta     getln_vec
-        lda     #>rp6502_inlin
+        lda     #>CHRIN
         sta     getln_vec+1
         lsr     Z14
         lda     #<QT_OK
@@ -281,9 +271,9 @@ lsav_load_chrin:
         ; before INLIN exits with "RUN" in INPUTBUFFER and RESTART
         ; dispatches it.
         stz     auto_run
-        ldy     #<rp6502_inlin
+        ldy     #<CHRIN
         sty     getln_vec
-        ldy     #>rp6502_inlin
+        ldy     #>CHRIN
         sty     getln_vec+1
 @emit_done:
         ply

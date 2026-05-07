@@ -9,7 +9,7 @@
 ; Upstream collapsed Ctrl-C and blank Enter into a single silent
 ; `clc; jmp CONTROL_C_TYPED` because most variants can't distinguish
 ; the two at the I/O layer. The RIA's SIGINT sidechannel can: INLIN
-; returns A=$03 from rp6502_inlin's @sigint for Ctrl-C, which we
+; returns A=$03 from CHRIN's @sigint for Ctrl-C, which we
 ; route through CONTROL_C_TYPED with C=1 so PRINT_ERROR_LINNUM
 ; prints "?BREAK IN <line>" before RESTART.
 ;
@@ -108,7 +108,7 @@ L2A9E:
         sta     INPUTBUFFER-1
 LCAF8:
         jsr     NXIN
-        ; INLIN signals cancel via A=$03 (rp6502_inlin's @sigint).
+        ; INLIN signals cancel via A=$03 (CHRIN's @sigint).
         ; Check before any other lda clobbers A. Bail through
         ; upstream's CONTROL_C_TYPED with C=1 so L2701's `bcc L270E`
         ; falls through to PRINT_ERROR_LINNUM — prints "?BREAK IN

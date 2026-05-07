@@ -70,11 +70,7 @@ SGNCPR       = STRNG1
 FACEXTENSION = STRNG1+1
 STRNG2:        .res 2
 LFTAB:         .res MAX_OPEN_FILES
-                        ; logical-file-number → kernel fd. Valid lfn
-                        ; range is 0..MAX_OPEN_FILES-1, indexed
-                        ; directly. $FF means "slot unused". Wiped to
-                        ; all $FF on every (re)init because warm-start
-                        ; invalidates all OS-side fds.
+
 tty_fd:        .res 1   ; fd for RP6502 tty: device
 con_fd:        .res 1   ; fd for RP6502 con: device
 out_fd:        .res 1   ; current CHROUT target; tty_fd by default, redirected by SAVE/CHKOUT
@@ -84,8 +80,8 @@ lsav_fd:       .res 1   ; SAVE/LOAD active fd. Set by both SAVE
                         ; and LOAD; doubles as the LOAD-active
                         ; flag (program.s:82 errors on a stray non-
                         ; numbered line while LOAD feeds INLIN).
-getln_vec:     .res 2   ; GETLN indirection; rp6502_inlin by default, swapped by LOAD
-chrout_ptr:    .res 2   ; rp6502_chrout target buffer; non-zero hi → buffer mode
+getln_vec:     .res 2   ; GETLN indirection; CHRIN by default, swapped by LOAD
+chrout_ptr:    .res 2   ; CHROUT target buffer; non-zero hi → buffer mode
 auto_run:      .res 1   ; cold-boot auto-load + RUN state machine
                         ;   0   = idle (normal LOAD)
                         ;   1   = auto-load mode (file read in progress)

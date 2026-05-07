@@ -1,16 +1,3 @@
-; Picocomputer RND. Replaces upstream src/msbasic/rnd.s.
-;
-; Stripped: KBD variant (different RND algorithm) and CBM_ALL variant
-; (ENTROPY zp slots not present). What remains is the canonical
-; non-KBD/non-CBM_ALL RND. Init seeds RNDSEED from the RIA OS RNG at
-; cold-boot (init.s:21-31), so the first RND(positive) starts from
-; real entropy rather than the upstream-baked GENERIC_RNDSEED constant
-; (which we no longer emit — see init.s).
-;
-; GOMOVMF is the externally-visible store-FAC-at-(Y,X) entry that
-; trig.s reaches into (jsr GOMOVMF, see trig.s:80); we tail-jmp to it
-; from the LCG step at the bottom.
-
 .segment "CODE"
 
 CONRND1:
