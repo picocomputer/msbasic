@@ -29,7 +29,6 @@
 .include "array.s"
 .include "misc2.s"
 .include "string.s"
-.include "misc3.s"
 .include "poke.s"
 .include "float.s"
 .include "rnd.s"

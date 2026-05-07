@@ -1,6 +1,6 @@
 ; All bug fixes, none of the platform-specific baggage, plus CONFIG_FILE.
 
-; --- config flags for mist64 sources ---
+; --- config flags  ---
 CONFIG_FILE                   := 1     ; OPEN/CLOSE/etc.
 CONFIG_NO_INPUTBUFFER_ZP      := 1     ; INPUTBUFFER lives in main RAM
 CONFIG_PEEK_SAVE_LINNUM       := 1     ; bug fix

@@ -32,10 +32,6 @@ set_target_properties(basic PROPERTIES
     LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/msbasic.cfg
 )
 
-target_include_directories(basic PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/mist64
-)
-
 target_sources(basic PRIVATE
     src/msbasic.s
 )

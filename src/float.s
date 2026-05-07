@@ -86,11 +86,7 @@ L365B:
         lda     ARG
 FADD2:
         tay
-.ifdef KBD
-        beq     RTS4
-.else
         beq     RTS3
-.endif
         sec
         sbc     FAC
         beq     FADD3
@@ -1391,15 +1387,9 @@ CON_BILLION:
 ; PRINT "IN <LINE #>"
 ; ----------------------------------------------------------------------------
 INPRT:
-.ifdef KBD
-        jsr     LFE0B
-        .byte	" in"
-        .byte	0
-.else
         lda     #<QT_IN
         ldy     #>QT_IN
         jsr     GOSTROUT2
-.endif
         lda     CURLIN+1
         ldx     CURLIN
 
