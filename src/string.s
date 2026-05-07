@@ -82,13 +82,8 @@ L32AA:
 L32B6:
         stx     STRNG2+1
         lda     STRNG1+1
-.ifdef CONFIG_NO_INPUTBUFFER_ZP
         beq     LD399
         cmp     #>INPUTBUFFER
-.elseif .def(AIM65)
-        beq     LD399
-        cmp     #$01
-.endif
         bne     PUTNEW
 LD399:
         tya
@@ -120,9 +115,7 @@ PUTEMP:
         ldy     #$00
         stx     FAC_LAST-1
         sty     FAC_LAST
-.ifdef CONFIG_2
         sty     FACEXTENSION
-.endif
         dey
         sty     VALTYP
         stx     LASTPT
@@ -187,9 +180,7 @@ FINDHIGHESTSTRING:
         sta     FRETOP+1
         ldy     #$00
         sty     FNCNAM+1
-.ifdef CONFIG_2
         sty     FNCNAM	; GC bugfix!
-.endif
         lda     STREND
         ldx     STREND+1
         sta     LOWTR
@@ -264,9 +255,7 @@ L3376:
 .ifdef CONFIG_CBM1_PATCHES
         jsr     LE7F3 ; XXX patch, call into screen editor
 .else
-  .ifdef CONFIG_11
         ldy     #$00	; GC bugfix
-  .endif
         asl     a
         adc     #$05
 .endif
@@ -351,19 +340,11 @@ L33FA:
 ; TO TOP AND GO BACK FOR ANOTHER
 ; ----------------------------------------------------------------------------
 MOVE_HIGHEST_STRING_TO_TOP:
-.ifdef CONFIG_2
         lda     FNCNAM+1	; GC bugfix
         ora     FNCNAM
-.else
-        ldx     FNCNAM+1
-.endif
         beq     L33FA
         lda     Z52
-.ifndef CONFIG_10A
-        sbc     #$03
-.else
         and     #$04
-.endif
         lsr     a
         tay
         sta     Z52
@@ -611,9 +592,7 @@ MIDSTR:
         jsr     GETBYT
 L353F:
         jsr     SUBSTRING_SETUP
-.ifdef CONFIG_2
         beq     GOIQ
-.endif
         dex
         txa
         pha
@@ -635,15 +614,9 @@ L353F:
 SUBSTRING_SETUP:
         jsr     CHKCLS
         pla
-.ifndef CONFIG_11
-        sta     JMPADRS+1
-        pla
-        sta     JMPADRS+2
-.else
         tay
         pla
         sta     Z52
-.endif
         pla
         pla
         pla
@@ -652,30 +625,19 @@ SUBSTRING_SETUP:
         sta     DSCPTR
         pla
         sta     DSCPTR+1
-.ifdef CONFIG_11
         lda     Z52
         pha
         tya
         pha
-.endif
         ldy     #$00
         txa
-.ifndef CONFIG_2
-        beq     GOIQ
-.endif
-.ifndef CONFIG_11
-        inc     JMPADRS+1
-        jmp     (JMPADRS+1)
-.else
         rts
-.endif
 
 ; ----------------------------------------------------------------------------
 ; "LEN" FUNCTION
 ; ----------------------------------------------------------------------------
 LEN:
         jsr     GETSTR
-SNGFLT1:
         jmp     SNGFLT
 
 ; ----------------------------------------------------------------------------
@@ -698,11 +660,7 @@ ASC:
         ldy     #$00
         lda     (INDEX),y
         tay
-.ifndef CONFIG_11A
-        jmp     SNGFLT1
-.else
         jmp     SNGFLT
-.endif
 ; ----------------------------------------------------------------------------
 GOIQ:
         jmp     IQERR

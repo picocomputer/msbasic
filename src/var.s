@@ -143,22 +143,14 @@ NAMENOTFOUND:
         pha
         cmp     #<FRM_VARIABLE_CALL
         bne     MAKENEWVARIABLE
-.ifdef CONFIG_SAFE_NAMENOTFOUND
         tsx
         lda     STACK+2,x
         cmp     #>FRM_VARIABLE_CALL
         bne     MAKENEWVARIABLE
-.endif
 LD015:
         lda     #<C_ZERO
         ldy     #>C_ZERO
         rts
-
-; ----------------------------------------------------------------------------
-.ifndef CONFIG_2
-C_ZERO:
-        .byte   $00,$00
-.endif
 
 ; ----------------------------------------------------------------------------
 ; MAKE A NEW SIMPLE VARIABLE

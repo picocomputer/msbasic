@@ -29,38 +29,6 @@ FSUBT:
         jmp     FADDT
 
 ; ----------------------------------------------------------------------------
-; Commodore BASIC V2 Easter Egg
-; ----------------------------------------------------------------------------
-.ifdef CONFIG_EASTER_EGG
-EASTER_EGG:
-        lda     LINNUM
-        cmp     #<6502
-        bne     L3628
-        lda     LINNUM+1
-        sbc     #>6502
-        bne     L3628
-        sta     LINNUM
-        tay
-        lda     #$80
-        sta     LINNUM+1
-LD758:
-        ldx     #$0A
-LD75A:
-        lda     MICROSOFT-1,x
-        and     #$3F
-        sta     (LINNUM),y
-        iny
-        bne     LD766
-        inc     LINNUM+1
-LD766:
-        dex
-        bne     LD75A
-        dec     FORPNT
-        bne     LD758
-        rts
-.endif
-
-; ----------------------------------------------------------------------------
 ; SHIFT SMALLER ARGUMENT MORE THAN 7 BITS
 ; ----------------------------------------------------------------------------
 FADD1:
@@ -165,13 +133,7 @@ L36C7:
 .endif
         sty     FACEXTENSION
         adc     #$08
-.ifdef CONFIG_2B
-; bugfix?
-; fix does not exist on AppleSoft 2
         cmp     #(MANTISSA_BYTES+1)*8
-.else
-        cmp     #MANTISSA_BYTES*8
-.endif
         bne     L36C7
 
 ; ----------------------------------------------------------------------------
@@ -518,11 +480,7 @@ FMULT:
 ; FAC = ARG * FAC
 ; ----------------------------------------------------------------------------
 FMULTT:
-.ifndef CONFIG_11
-        beq     L3903
-.else
         jeq     L3903
-.endif
         jsr     ADD_EXPONENTS
         lda     #$00
         sta     RESULT
@@ -1332,20 +1290,10 @@ GETEXP:
         lda     EXPON
         cmp     #MAX_EXPON
         bcc     L3C2C
-.ifdef CONFIG_10A
         lda     #$64
-.endif
         bit     EXPSGN
-.ifdef CONFIG_10A
         bmi     L3C3A
-.else
-        bmi     LDC70
-.endif
         jmp     OVERFLOW
-LDC70:
-.ifndef CONFIG_10A
-        lda     #$0B
-.endif
 L3C2C:
         asl     a
         asl     a
@@ -1374,11 +1322,7 @@ CON_BILLION:
 CON_99999999_9:
         .byte   $9B,$3E,$BC,$1F,$FD
 CON_999999999:
-.ifndef CONFIG_10A
-        .byte   $9E,$6E,$6B,$27,$FE
-.else
         .byte   $9E,$6E,$6B,$27,$FD
-.endif
 CON_BILLION:
         .byte   $9E,$6E,$6B,$28,$00
 .endif
@@ -1672,9 +1616,7 @@ DECTBL_END:
 		.byte	$FF,$FF,$FD,$A8
 		.byte	$00,$00,$00,$3C
 .endif
-.ifdef CONFIG_2
 C_ZERO = CON_HALF + 2
-.endif
 
 ; ----------------------------------------------------------------------------
 ; "SQR" FUNCTION

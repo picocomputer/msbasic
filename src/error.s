@@ -36,13 +36,7 @@ define_error ERR_ZERODIV, "DIVISION BY ZERO"
 define_error ERR_ILLDIR, "ILLEGAL DIRECT"
 define_error ERR_BADTYPE, "TYPE MISMATCH"
 define_error ERR_STRLONG, "STRING TOO LONG"
-.ifdef CONFIG_FILE
-  .ifdef CBM1
-define_error ERR_BADDATA, "BAD DATA"
-  .else
 define_error ERR_BADDATA, "FILE DATA"
-  .endif
-.endif
 define_error ERR_FRMCPX, "FORMULA TOO COMPLEX"
 define_error ERR_CANTCONT, "CAN'T CONTINUE"
 define_error ERR_UNDEFFN, "UNDEF'D FUNCTION"

@@ -44,12 +44,10 @@ GETADR:
 ; "PEEK" FUNCTION
 ; ----------------------------------------------------------------------------
 PEEK:
-.ifdef CONFIG_PEEK_SAVE_LINNUM
         lda     LINNUM+1
         pha
         lda     LINNUM
         pha
-.endif
         jsr     GETADR
         ldy     #$00
 .ifdef CBM1
@@ -72,12 +70,10 @@ LD6F3:
 .endif
         lda     (LINNUM),y
         tay
-.ifdef CONFIG_PEEK_SAVE_LINNUM
         pla
         sta     LINNUM
         pla
         sta     LINNUM+1
-.endif
 LD6F6:
         jmp     SNGFLT
 
@@ -99,11 +95,7 @@ WAIT:
         stx     FORPNT
         ldx     #$00
         jsr     CHRGOT
-.ifdef CONFIG_EASTER_EGG
-        beq     EASTER_EGG
-.else
         beq     L3628
-.endif
         jsr     COMBYTE
 L3628:
         stx     FORPNT+1

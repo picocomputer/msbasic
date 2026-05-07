@@ -116,19 +116,6 @@ POLY_SIN:
         .byte   $07,$FB,$F8,$87,$99,$68,$89,$01
         .byte   $87,$23,$35,$DF,$E1,$86,$A5,$5D
         .byte   $E7,$28,$83,$49,$0F,$DA,$A2
-  .ifndef CONFIG_11
-; no easter egg text before BASIC 1.1
-  .elseif !.def(CONFIG_2A)
-; ASCII encoded easter egg
-MICROSOFT:
-        .byte   $A6,$D3,$C1,$C8,$D4,$C8,$D5,$C4
-        .byte   $CE,$CA
-  .else
-; PET encoded easter egg text since CBM2
-MICROSOFT:
-        .byte   $A1,$54,$46,$8F,$13,$8F,$52,$43
-        .byte   $89,$CD
-  .endif
 .endif
 
 .ifndef AIM65
@@ -196,10 +183,6 @@ POLY_ATN:
 		.byte	$7E,$4C,$CC,$91,$C7
 		.byte	$7F,$AA,$AA,$AA,$13
         .byte   $81,$00,$00,$00,$00
-.endif
-
-.if .def(CONFIG_11A) && (!.def(CONFIG_2))
-		.byte	$00 ; XXX
 .endif
 .endif
 .endif

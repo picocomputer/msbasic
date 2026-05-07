@@ -19,31 +19,13 @@ GERR:
         beq     JERROR
 NEXT3:
         txs
-.ifndef CONFIG_2
-        inx
-        inx
-        inx
-        inx
-.endif
         txa
-.ifdef CONFIG_2
         clc
         adc     #$04
         pha
         adc     #BYTES_FP+1
         sta     DEST
         pla
-.else
-        inx
-        inx
-        inx
-        inx
-        inx
-.ifndef CONFIG_SMALL
-        inx
-.endif
-        stx     DEST
-.endif
         ldy     #>STACK
         jsr     LOAD_FAC_FROM_YA
         tsx
@@ -240,18 +222,12 @@ FRM_STACK2:
         tay
         pla
         sta     INDEX
-.ifndef CONFIG_2B
-        inc     INDEX ; bug: assumes not on page boundary
-; bug exists on AppleSoft II
-.endif
         pla
         sta     INDEX+1
-.ifdef CONFIG_2B
         inc     INDEX
         bne     LEB69
         inc     INDEX+1
 LEB69:
-.endif
         tya
         pha
 
@@ -484,14 +460,8 @@ LCE3B:
         jmp     LD353
 LCE53:
 .endif
-.ifdef CONFIG_2
-  .ifndef CBM2
-; bugfix?
-; fixed on AppleSoft II, not on any CBM
         ldx     #$00
         stx     STRNG1+1
-  .endif
-.endif
         rts
 L2DB1:
 .ifndef CONFIG_SMALL

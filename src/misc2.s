@@ -49,11 +49,9 @@ ERRDIR:
         inx
         bne     RTS9
         ldx     #ERR_ILLDIR
-.ifdef CONFIG_2
-        .byte   $2C
+        .byte   $2C ; BIT past 2 bytes
 LD288:
         ldx     #ERR_UNDEFFN
-.endif
 L31AF:
         jmp     ERROR
 DEF:
@@ -102,20 +100,12 @@ L31F3:
         pla
         sta     FNCNAM+1
         ldy     #$02
-.ifndef CONFIG_2
-        ldx     #ERR_UNDEFFN
-.endif
         lda     (FNCNAM),y
-.ifndef CONFIG_2
-        beq     L31AF
-.endif
         sta     VARPNT
         tax
         iny
         lda     (FNCNAM),y
-.ifdef CONFIG_2
         beq     LD288
-.endif
         sta     VARPNT+1
 .ifndef CONFIG_SMALL
         iny

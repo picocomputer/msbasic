@@ -20,10 +20,7 @@ L2FAF:
 ; ----------------------------------------------------------------------------
 NEG32768:
         .byte   $90,$80,$00,$00
-
-.ifdef CONFIG_2C
-		.byte	$00; bugfix: short number
-.endif
+        .byte	$00; bugfix: short number
 
 ; ----------------------------------------------------------------------------
 ; EVALUATE NUMERIC FORMULA AT TXTPTR
@@ -32,20 +29,14 @@ NEG32768:
 ; ----------------------------------------------------------------------------
 MAKINT:
         jsr     CHRGET
-.ifdef CONFIG_2
         jsr     FRMEVL
-.else
-        jsr     FRMNUM
-.endif
 
 ; ----------------------------------------------------------------------------
 ; CONVERT FAC TO INTEGER
 ; MUST BE POSITIVE AND LESS THAN 32768
 ; ----------------------------------------------------------------------------
 MKINT:
-.ifdef CONFIG_2
         jsr     CHKNUM
-.endif
         lda     FACSIGN
         bmi     MI1
 
@@ -185,9 +176,6 @@ MAKE_NEW_ARRAY:
         tay
         sta     STRNG2+1
         ldx     #BYTES_PER_ELEMENT
-.if .def(CONFIG_SMALL) && (!.def(CONFIG_2))
-        stx     STRNG2
-.endif
         lda     VARNAM
         sta     (LOWTR),y
 .ifndef CONFIG_SMALL
@@ -198,15 +186,13 @@ L3078:
         iny
         lda     VARNAM+1
         sta     (LOWTR),y
-.if (!.def(CONFIG_SMALL)) || .def(CONFIG_2)
         bpl     L3081
         dex
-  .if !(.def(CONFIG_SMALL) && .def(CONFIG_2))
+  .ifndef CONFIG_SMALL
         dex
   .endif
 L3081:
         stx     STRNG2
-.endif
         lda     EOLPNTR
         iny
         iny
@@ -324,19 +310,7 @@ L3124:
         stx     STRNG2
         dec     EOLPNTR
         bne     L30F6
-.if .def(CONFIG_SMALL) && (!.def(CONFIG_2))
-        asl     STRNG2
-        rol     a
-        bcs     GSE
-        asl     STRNG2
-        rol     a
-        bcs     GSE
-        tay
-        lda     STRNG2
-.else
-  .ifdef CONFIG_11A
         sta     STRNG2+1
-  .endif
         ldx     #BYTES_FP
   .ifdef CONFIG_SMALL
         lda     VARNAM+1
@@ -359,7 +333,6 @@ L313B:
         lda     #$00
         jsr     MULTIPLY_SUBS1
         txa
-.endif
         adc     HIGHDS
         sta     VARPNT
         tya
@@ -410,4 +383,3 @@ L317C:
         dec     INDX
         bne     L3163
         rts
-
