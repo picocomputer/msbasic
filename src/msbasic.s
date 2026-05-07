@@ -1,10 +1,6 @@
 .debuginfo +
 .macpack longbranch
 
-; --- exported from rp6502.cfg ---
-.import __INPUT_START__
-.import __BASRAM_START__, __BASRAM_SIZE__
-
 ; --- cc65 library includes ---
 .include "rp6502.inc"
 .include "fcntl.inc"

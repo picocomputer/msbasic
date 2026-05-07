@@ -1,4 +1,5 @@
 .segment "INIT"
+.import __BASRAM_START__, __BASRAM_SIZE__
 
 COLD_START:
         ; Seed RNDSEED with 31 bits of OS entropy. RNDSEED is 5 bytes

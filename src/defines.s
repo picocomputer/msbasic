@@ -29,6 +29,7 @@ STACK          := $0100
 STACK2         := STACK
 
 ; --- RP6502 ---
+.import __INPUT_START__
 INPUTBUFFER    := __INPUT_START__
 INPUTBUFFERX   := INPUTBUFFER & $FF00
 MAX_OPEN_FILES := 8                     ; LFTAB size; valid OPEN# lfn range
