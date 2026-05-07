@@ -42,13 +42,13 @@ CLOSE <lfn>
 | `"w+"`    | read/write, create, truncate   |
 | `"a+"`    | read/write, create, append     |
 
-Once a file is open, the lfn drives I/O redirection on the existing CBM-style statements:
+Once a file is open, the lfn drives I/O redirection on CBM-style statements:
 
 ```basic
 PRINT# <lfn>, <expr-list>      : write to the file
 INPUT# <lfn>, <var-list>       : read from the file (newline-delimited)
 GET#   <lfn>, <var>            : read one byte from the file
-CMD    <lfn> [, <expr-list>]   : redirect subsequent PRINT output until CLRCH
+CMD    <lfn> [, <expr-list>]   : redirect subsequent PRINT output
 ```
 
 Reads return EOF when the OS returns fewer bytes than requested. `INPUT#` then bails cleanly to the caller; `GET#` simply returns an empty value, so polling a pipe in BASIC is a normal `GET#` loop.
@@ -60,7 +60,7 @@ SAVE "prog.bas"
 LOAD "prog.bas"
 ```
 
-`SAVE` always overwrites; `LOAD` replaces the program in memory and then runs from the current direct-mode prompt.
+`SAVE` always overwrites; `LOAD` replaces the program in memory.
 
 ## Other statements
 
