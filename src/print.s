@@ -1,11 +1,3 @@
-; Picocomputer print/output routines. Replaces upstream src/msbasic/print.s.
-;
-; We target only the Picocomputer, so all the variant ifdefs are gone — no
-; CBM1 CRSR codes, no AIM65/KBD/SYM1/MICROTAN/OSI/APPLE conditionals, no
-; PRINT_NULL padding, no IO_MSB, no MONCOUT_DESTROYS_Y, no CONFIG_PRINT_CR
-; auto-wrap. Behavior matches the cleaned-up CONFIG_2A + CONFIG_FILE +
-; CONFIG_NO_CR + CONFIG_CBM_ALL slice.
-;
 ; Key change vs. upstream: L29B9 (INLIN line termination) RETURNS without
 ; falling into CRDO. The host terminal already advanced its line on the
 ; user's Enter, so an extra CRLF would produce a stray blank line on every
@@ -148,7 +140,7 @@ OUTQUES:
         ; falls into OUTDO
 
 ; ----------------------------------------------------------
-; OUTDO — write A through MONCOUT.
+; OUTDO — write A through CHROUT.
 ;   - Z14 bit 7 suppresses output (BASIC's "no output" flag).
 ;   - POSX is incremented for printable chars (>= $20) so that
 ;     PRINT comma/TAB/SPC alignment works.
@@ -174,6 +166,6 @@ OUTDO:
         bcc outdo_emit            ; other control chars: emit, no inc
         inc POSX
 outdo_emit:
-        jmp MONCOUT               ; tail call
+        jmp CHROUT               ; tail call
 outdo_done:
         rts

@@ -2,7 +2,7 @@
 ; (which is just a variant dispatcher and zero bytes for our config).
 ;
 ; SAVE writes the program out as plain text — same byte stream LIST
-; emits — by redirecting MONCOUT (via out_fd) to the save fd and
+; emits — by redirecting CHROUT (via out_fd) to the save fd and
 ; calling LIST.
 ;
 ; LOAD installs lsav_load_chrin as the GETLN hook so the existing
@@ -36,9 +36,9 @@ lsav_err_baddata:
 
 ; ============================================================
 ; SAVE "filename"
-; Open file for write (creating/truncating), redirect MONCOUT
+; Open file for write (creating/truncating), redirect CHROUT
 ; to the file fd, JSR LIST to detokenize the program, restore
-; MONCOUT back to tty, close the file.
+; CHROUT back to tty, close the file.
 ; ============================================================
 SAVE:
         jsr     rp6502_push_string
@@ -46,7 +46,7 @@ SAVE:
         jsr     rp6502_open
         bcs     lsav_err_baddata
         sta     lsav_fd
-        sta     out_fd                 ; redirect chrout to the file
+        sta     out_fd                 ; redirect CHROUT to the file
 
         ; LIST is normally entered from statement dispatch with A and
         ; the carry flag set up by CHRGOT (A = current char, carry
@@ -183,7 +183,7 @@ lsav_load_chrin:
         ; INLIN holds its buffer index in X across each jsr GETLN, and
         ; RIA_SPIN clobbers X. Preserve via the 6502 stack — we can't
         ; use rp6502_sv_x/y because STROUT in the @eof path goes
-        ; through chrout, which writes those same slots as scratch.
+        ; through CHROUT, which writes those same slots as scratch.
         phx
         phy
 
@@ -232,7 +232,7 @@ lsav_load_chrin:
         bra     lsav_load_err          ; STKINI in ERROR resets SP
 
 @eof:
-        ; STROUT below clobbers chrout's scratch slots, but X/Y are on
+        ; STROUT below clobbers CHROUT's scratch slots, but X/Y are on
         ; the 6502 stack from entry, safe there.
         lda     lsav_fd
         jsr     rp6502_close

@@ -4,8 +4,7 @@
 ; breaks the program back to OK. For a numeric variable it prints
 ; "?REDO FROM START" and re-runs the INPUT statement (same as a
 ; malformed numeric response); for a string variable it assigns ""
-; and continues. Empty-as-0 isn't a MS BASIC spec — it was just what
-; FIN did with an empty buffer, which papered over user typos.
+; and continues.
 ;
 ; Upstream collapsed Ctrl-C and blank Enter into a single silent
 ; `clc; jmp CONTROL_C_TYPED` because most variants can't distinguish
@@ -13,13 +12,6 @@
 ; returns A=$03 from rp6502_inlin's @sigint for Ctrl-C, which we
 ; route through CONTROL_C_TYPED with C=1 so PRINT_ERROR_LINNUM
 ; prints "?BREAK IN <line>" before RESTART.
-;
-; Strips dead .ifdef branches: KBD, APPLE, SYM1, AIM65, MICROTAN,
-; CBM1, CBM1_PATCHES, CONFIG_SMALL, CONFIG_CBM_ALL, CONFIG_IO_MSB.
-; Collapses always-on conditionals: CONFIG_2/11/11A/10A,
-; CONFIG_NO_READ_Y_IS_ZERO_HACK, CONFIG_NO_INPUTBUFFER_ZP.
-; CONFIG_FILE branches stay live: CHKIN/CHKOUT/CLRCH/CURDVC route
-; through file.s for INPUT#/PRINT#/GET#.
 ;
 ; INPUTH (INPUT# keyword handler) lives in file.s; it sets up the
 ; redirect via CHKIN, then jsr's L2A9E to enter the INPUT body
@@ -191,7 +183,7 @@ PROCESS_INPUT_ITEM:
         bne     INSTART
         bit     INPUTFLG
         bvc     L2AF0               ; not GET → reprompt path
-        jsr     MONRDKEY            ; GET: pull one key
+        jsr     GETIN            ; GET: pull one key
         sta     INPUTBUFFER
         ldx     #<(INPUTBUFFER-1)
         ldy     #>(INPUTBUFFER-1)

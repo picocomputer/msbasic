@@ -1,21 +1,12 @@
-; Picocomputer 6502 BASIC variant configuration.
-; Replaces upstream src/msbasic/defines.s + defines_<variant>.s.
-;
-; All bug fixes, none of the platform-specific baggage, plus CONFIG_FILE
-; so the file-support infrastructure is wired in for Phase 3. No
-; CBM/CBM_ALL/DATAFLG/SCRTCH_ORDER markers — those only gate code paths
-; in our owned files, which we strip.
+; All bug fixes, none of the platform-specific baggage, plus CONFIG_FILE.
 
 ; --- config flags for mist64 sources ---
-CONFIG_FILE                   := 1     ; TODO file I/O
-CONFIG_NO_CR                  := 1     ; no auto-CR, terminal line wraps
-CONFIG_NO_LINE_EDITING        := 1     ; host owns line editing
+CONFIG_FILE                   := 1     ; OPEN/CLOSE/etc.
 CONFIG_NO_INPUTBUFFER_ZP      := 1     ; INPUTBUFFER lives in main RAM
-CONFIG_NO_READ_Y_IS_ZERO_HACK := 1     ; bug fix
 CONFIG_PEEK_SAVE_LINNUM       := 1     ; bug fix
-CONFIG_SAFE_NAMENOTFOUND      := 1     ; bug fix: NAMENOTFOUND high-byte retaddr check
+CONFIG_SAFE_NAMENOTFOUND      := 1     ; bug fix
 
-; --- enable all fixes up to latest version 2.0C ---
+; --- enable fixes up to latest version 2.0C ---
 CONFIG_2C  := 1
 CONFIG_2B  := 1
 CONFIG_2A  := 1
@@ -32,24 +23,11 @@ STACK2         := STACK
 .import __INPUT_START__
 INPUTBUFFER    := __INPUT_START__
 INPUTBUFFERX   := INPUTBUFFER & $FF00
-MAX_OPEN_FILES := 8                     ; LFTAB size; valid OPEN# lfn range
-                                        ; is 0..MAX_OPEN_FILES-1. Costs that
-                                        ; many bytes of zp.
+MAX_OPEN_FILES := 8 ; LFTAB size; valid OPEN# lfn range, 1 zp each
 
 ; --- BASIC sizing constants ---
 SPACE_FOR_GOSUB := $3E
 STACK_TOP       := $FF
-
-; --- I/O hooks ---
-; MONRDKEY/GETIN: non-blocking ("get key if one's ready"), A=0,Z=1 on empty.
-; CHRIN: blocking line-input read used by INLIN's GETLN — must wait for a
-;        byte and translate the host's LF to CR.
-MONCOUT  := rp6502_chrout
-MONRDKEY := rp6502_getin
-ISCNTC   := rp6502_iscntc
-CHRIN    := rp6502_inlin
-CHROUT   := rp6502_chrout
-GETIN    := rp6502_getin
 
 ; --- Stubbed keyword handlers (parser tokenizes them, dispatch RTSes) ---
 SYS    := rp6502_rts_stub

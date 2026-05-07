@@ -77,7 +77,7 @@ LFTAB:         .res MAX_OPEN_FILES
                         ; invalidates all OS-side fds.
 tty_fd:        .res 1   ; fd for RP6502 tty: device
 con_fd:        .res 1   ; fd for RP6502 con: device
-out_fd:        .res 1   ; current MONCOUT target; tty_fd by default, redirected by SAVE/CHKOUT
+out_fd:        .res 1   ; current CHROUT target; tty_fd by default, redirected by SAVE/CHKOUT
 in_fd:         .res 1   ; current input source for GET/INLIN's per-byte reads;
                         ; tty_fd by default, redirected by CHKIN
 lsav_fd:       .res 1   ; SAVE/LOAD active fd. Set by both SAVE

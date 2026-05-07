@@ -23,7 +23,7 @@
 ; ============================================================
 ; Low-level RIA fastcall helpers, used throughout this file
 ; plus loadsave.s, file.s, and init.s. Keeping the rp6502_*
-; family together; the higher-level routines below (chrout,
+; family together; the higher-level routines below (CHROUT,
 ; inlin, getin, …) build on these primitives.
 ; ============================================================
 
@@ -150,12 +150,12 @@ rp6502_init_io:
         jsr rp6502_open
         sta con_fd
 
-        ; Default MONCOUT target = tty_fd. SAVE temporarily swaps this
+        ; Default CHROUT target = tty_fd. SAVE temporarily swaps this
         ; to a file fd to capture LIST output to disk; CHKOUT swaps
         ; it to a user fd for PRINT#.
         lda tty_fd
         sta out_fd
-        ; Default GET / MONRDKEY source = tty_fd. CHKIN redirects it
+        ; Default GET / GETIN source = tty_fd. CHKIN redirects it
         ; for GET#.
         sta in_fd
         ; Default GETLN target = rp6502_inlin. LOAD swaps this to its
@@ -168,14 +168,14 @@ rp6502_init_io:
         rts
 
 ; ------------------------------------------------------------
-; rp6502_chrout
+; CHROUT
 ;   Write A to the current out_fd (tty: by default, file fd
 ;   during SAVE) — or, if tab completion has flipped chrout_ptr
 ;   on, append A to the INPUTBUFFER staging area instead.
 ;   Preserves A, X, Y. Loops on partial writes (op may return
 ;   bytes_written < 1 while the OS-side tx queue drains).
 ; ------------------------------------------------------------
-rp6502_chrout:
+CHROUT:
         phx
         phy
         tay                       ; Y holds the byte across RIA_SPIN
@@ -216,7 +216,7 @@ rp6502_chrout:
 
 @write_err:
         ; tty: write errors are unrecoverable — ERROR's own message
-        ; would just re-enter chrout — so eat them. File-fd errors
+        ; would just re-enter CHROUT — so eat them. File-fd errors
         ; (SAVE in progress, e.g. disk full) abort the SAVE: ZXSTACK
         ; flushes the partial WRITE_XSTACK state, lsav_abort restores
         ; out_fd to tty before close, then BADDATA reports it.
@@ -235,16 +235,16 @@ rp6502_chrout:
         rts
 
 ; ------------------------------------------------------------
-; rp6502_getin
+; GETIN
 ;   Non-blocking read of one byte from in_fd (defaults to tty:; CHKIN
 ;   redirects it for GET#). Returns A=char or A=0/Z=1 if no byte ready.
-;   Preserves X, Y. Used by GET (MONRDKEY/GETIN). On a redirected fd
+;   Preserves X, Y. Used by GET. On a redirected fd
 ;   at EOF the OS returns 0 too, so we just report "" — GET# never
 ;   sets Z96's EOF bit, so a BASIC loop polling a pipe stays clean.
 ;   ISCNTC must NOT use this routine — break detection has to keep
 ;   reading from tty_fd directly (see rp6502_iscntc below).
 ; ------------------------------------------------------------
-rp6502_getin:
+GETIN:
         phx
         phy
         lda #$01
@@ -358,7 +358,7 @@ rp6502_tab_completion:
         lda #>INPUTBUFFER
         sta chrout_ptr+1
         jsr L25A6X
-        ; Restore normal chrout-to-fd and capture the buffer length,
+        ; Restore normal CHROUT-to-fd and capture the buffer length,
         ; trimming the trailing CR LF that the end-of-line CRDO wrote.
         sec
         lda chrout_ptr
@@ -412,6 +412,7 @@ esc_clear_line_end:
 ;   end-to-end), so the side polls run only while the user is typing.
 ; ------------------------------------------------------------
 rp6502_inlin:
+CHRIN:
         phx
         phy
 @wait:
@@ -511,9 +512,10 @@ rp6502_inlin:
 ;   While tab completion is filling INPUTBUFFER (chrout_ptr+1
 ;   non-zero), break checks are suspended: LIST's L25A6X calls
 ;   ISCNTC mid-listing, and a STOP from there would unwind with
-;   chrout still routed to the buffer.
+;   CHROUT still routed to the buffer.
 ; ------------------------------------------------------------
 rp6502_iscntc:
+ISCNTC:
         lda chrout_ptr+1          ; tab completion in progress: skip
         bne @done                 ; (see header comment)
         lda #RIA_ATTR_SIGINT

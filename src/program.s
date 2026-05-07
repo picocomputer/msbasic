@@ -24,7 +24,7 @@ MEMERR:
 ; (CURLIN+1) = $FF IF IN DIRECT MODE
 ; ----------------------------------------------------------------------------
 ERROR:
-        ; Tear down LOAD/SAVE state before any chrout: if LOAD was
+        ; Tear down LOAD/SAVE state before any CHROUT: if LOAD was
         ; feeding lines (e.g. OOMERR in NUMBERED_LINE) we need to
         ; close the file and unhook getln_vec, otherwise RESTART
         ; would loop right back into the file. lsav_panic is a
