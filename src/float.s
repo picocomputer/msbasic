@@ -1417,7 +1417,7 @@ GOSTROUT2:
         jmp     STROUT
 
 ; ----------------------------------------------------------------------------
-; CONVERT (FAC) TO STRING STARTING AT STACK
+; CONVERT (FAC) TO STRING STARTING AT FOUTBUF+1
 ; RETURN WITH (Y,A) POINTING AT STRING
 ; ----------------------------------------------------------------------------
 FOUT:
@@ -1425,7 +1425,7 @@ FOUT:
 
 ; ----------------------------------------------------------------------------
 ; "STR$" FUNCTION ENTERS HERE, WITH (Y)=0
-; SO THAT RESULT STRING STARTS AT STACK-1
+; SO THAT RESULT STRING STARTS AT FOUTBUF
 ; (THIS IS USED AS A FLAG)
 ; ----------------------------------------------------------------------------
 FOUT1:
@@ -1434,7 +1434,7 @@ FOUT1:
         bpl     L3C73
         lda     #$2D
 L3C73:
-        sta     STACK2-1,y
+        sta     FOUTBUF,y
         sta     FACSIGN
         sty     STRNG2
         iny
@@ -1515,12 +1515,12 @@ L3CDF:
         ldy     STRNG2
         lda     #$2E
         iny
-        sta     STACK2-1,y
+        sta     FOUTBUF,y
         txa
         beq     L3CF0
         lda     #$30
         iny
-        sta     STACK2-1,y
+        sta     FOUTBUF,y
 L3CF0:
         sty     STRNG2
 ; ----------------------------------------------------------------------------
@@ -1570,12 +1570,12 @@ L3D23:
         iny
         tax
         and     #$7F
-        sta     STACK2-1,y
+        sta     FOUTBUF,y
         dec     INDX
         bne     L3D3E
         lda     #$2E
         iny
-        sta     STACK2-1,y
+        sta     FOUTBUF,y
 L3D3E:
         sty     STRNG2
         ldy     VARPNT
@@ -1597,7 +1597,7 @@ L3D3E:
 LDD96:
         ldy     STRNG2
 L3D4E:
-        lda     STACK2-1,y
+        lda     FOUTBUF,y
         dey
         cmp     #$30
         beq     L3D4E
@@ -1615,9 +1615,9 @@ L3D5B:
         tax
         lda     #$2D
 L3D6B:
-        sta     STACK2+1,y
+        sta     FOUTBUF+2,y
         lda     #$45
-        sta     STACK2,y
+        sta     FOUTBUF+1,y
         txa
         ldx     #$2F
         sec
@@ -1626,20 +1626,20 @@ L3D77:
         sbc     #$0A
         bcs     L3D77
         adc     #$3A
-        sta     STACK2+3,y
+        sta     FOUTBUF+4,y
         txa
-        sta     STACK2+2,y
+        sta     FOUTBUF+3,y
         lda     #$00
-        sta     STACK2+4,y
+        sta     FOUTBUF+5,y
         beq     L3D94
 FOUT4:
-        sta     STACK2-1,y
+        sta     FOUTBUF,y
 L3D8F:
         lda     #$00
-        sta     STACK2,y
+        sta     FOUTBUF+1,y
 L3D94:
-        lda     #<STACK2
-        ldy     #>STACK2
+        lda     #<(FOUTBUF+1)
+        ldy     #>(FOUTBUF+1)
         rts
 
 ; ----------------------------------------------------------------------------

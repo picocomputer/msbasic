@@ -117,8 +117,7 @@ LCAF8:
         ; falls through to PRINT_ERROR_LINNUM — prints "?BREAK IN
         ; <line>" before landing at RESTART. The whole INLIN→NXIN
         ; chain has already RTS'd back here, so END4's pla;pla just
-        ; pops the EXECUTE_STATEMENT frame; SP stays well above
-        ; FOUT's $0100+ scratch.
+        ; pops the EXECUTE_STATEMENT frame.
         cmp     #$03
         bne     @no_cancel
         sec

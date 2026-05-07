@@ -16,18 +16,17 @@ CONFIG_11  := 1
 CONFIG_10A := 1
 
 ; --- 6502 ---
-STACK          := $0100
-STACK2         := STACK
+STACK           := $0100
+STACK_TOP       := $FF
+SPACE_FOR_GOSUB := $3E
 
 ; --- RP6502 ---
+.import __FOUTBUF_START__
+FOUTBUF        := __FOUTBUF_START__
 .import __INPUT_START__
 INPUTBUFFER    := __INPUT_START__
 INPUTBUFFERX   := INPUTBUFFER & $FF00
 MAX_OPEN_FILES := 8 ; LFTAB size; valid OPEN# lfn range, 1 zp each
-
-; --- BASIC sizing constants ---
-SPACE_FOR_GOSUB := $3E
-STACK_TOP       := $FF
 
 ; --- size math derived from BYTES_FP (replaces defines.s:52-93) ---
 BYTES_FP           := 5

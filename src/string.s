@@ -9,13 +9,9 @@ STR:
         pla
         pla
 LD353:
-        lda     #<(STACK2-1)
-        ldy     #>(STACK2-1)
-.if STACK2 > $0100
-        bne     STRLIT
-.else
-        beq     STRLIT
-.endif
+        lda     #<FOUTBUF
+        ldy     #>FOUTBUF
+        bra     STRLIT
 
 ; ----------------------------------------------------------------------------
 ; GET SPACE AND MAKE DESCRIPTOR FOR STRING WHOSE
