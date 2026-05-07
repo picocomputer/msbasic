@@ -256,7 +256,7 @@ PARSE_INPUT_LINE:
         ldy     #$04
         sty     DATAFLG
 L246C:
-        lda     INPUTBUFFERX,x
+        lda     INPUTBUFFER,x
         cmp     #$20
         beq     L24AC
         sta     ENDCHR
@@ -299,7 +299,7 @@ L2496:
 L2497:
         inx
 L2498:
-        lda     INPUTBUFFERX,x
+        lda     INPUTBUFFER,x
         ; Reject high-bit-set chars so the legacy Commodore "second-letter
         ; shifted" shortcut path can't trigger. With ASCII-only input the
         ; sbc-equals-$80 endmark only fires for the table's bit-7 terminator.
@@ -363,7 +363,7 @@ L24C1:
 ; BY COPYING CHARS UP TO ENDCHR.
 ; ----------------------------------------------------------------------------
 L24C8:
-        lda     INPUTBUFFERX,x
+        lda     INPUTBUFFER,x
         beq     L24AC
         cmp     ENDCHR
         beq     L24AC
@@ -414,7 +414,7 @@ L24DB:
         stz     EOLPNTR
         bra     L2498
 @no_match:
-        lda     INPUTBUFFERX,x
+        lda     INPUTBUFFER,x
         bpl     L24AA
         ; High-bit byte outside a string literal — neither a keyword
         ; (the bmi guard in L2498 prevented a match) nor a valid

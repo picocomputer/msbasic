@@ -15,7 +15,7 @@ LF42C:
 
 ; ----------------------------------------------------------------------------
 GET_UPPER:
-        lda     INPUTBUFFERX,x
+        lda     INPUTBUFFER,x
 LF430:
         cmp     #'a'
         bcc     LF43A

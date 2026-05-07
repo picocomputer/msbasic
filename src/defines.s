@@ -15,17 +15,19 @@ CONFIG_11A := 1
 CONFIG_11  := 1
 CONFIG_10A := 1
 
-; --- 6502 ---
+; --- 6502 RAM ---
 STACK           := $0100
 STACK_TOP       := $FF
 SPACE_FOR_GOSUB := $3E
-
-; --- RP6502 ---
-.import __FOUTBUF_START__
+.import __FOUTBUF_START__, __FOUTBUF_SIZE__
 FOUTBUF        := __FOUTBUF_START__
-.import __INPUT_START__
-INPUTBUFFER    := __INPUT_START__
-INPUTBUFFERX   := INPUTBUFFER & $FF00
+.assert __FOUTBUF_SIZE__ = $11, error, "FOUTBUF size must be 17 bytes"
+.import __INBUF_START__, __INBUF_SIZE__
+INPUTBUFFER    := __INBUF_START__
+.assert __INBUF_SIZE__ = $100, error, "INPUTBUFFER size must be a full page"
+.assert (INPUTBUFFER & $FF) = 0, error, "INPUTBUFFER must be page-aligned"
+
+; --- Logicial file numbers for OPEN/CLOSE ---
 MAX_OPEN_FILES := 8 ; LFTAB size; valid OPEN# lfn range, 1 zp each
 
 ; --- size math derived from BYTES_FP (replaces defines.s:52-93) ---
