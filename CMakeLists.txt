@@ -21,7 +21,7 @@ set_target_properties(chrget PROPERTIES
 )
 
 rp6502_asset(basic help src/help.txt)
-rp6502_asset(basic 0x00E7 ${CMAKE_CURRENT_BINARY_DIR}/chrget)
+rp6502_asset(basic 0x00E8 ${CMAKE_CURRENT_BINARY_DIR}/chrget)
 rp6502_executable(basic DATA 0xC000 RESET 0xC000)
 
 target_link_options(basic PRIVATE
