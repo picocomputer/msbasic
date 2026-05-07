@@ -37,7 +37,8 @@ COLD_START:
 
         stz SHIFTSIGNEXT
         stz LASTPT+1
-        stz CURDVC
+        lda #$FF              ; "no I/O redirect" sentinel; CMD/INPUT#/
+        sta CURDVC            ; GET# overwrite with lfn 0..7
         stz Z14
         stz POSX
         stz lsav_fd

@@ -33,9 +33,10 @@ ERROR:
         jsr     lsav_panic
         lsr     Z14
         lda     CURDVC    ; output
-        beq     LC366     ; is screen
+        bmi     LC366     ; $FF = no redirect
         jsr     CLRCH     ; otherwise redirect output back to screen
-        stz     CURDVC
+        lda     #$FF
+        sta     CURDVC
 LC366:
         jsr     CRDO
         jsr     OUTQUES

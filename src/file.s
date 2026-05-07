@@ -198,7 +198,7 @@ INPUTH:
         jsr     CHKIN
         stx     CURDVC
         jsr     L2A9E                   ; INPUT body (skips prompt-string parse)
-        jmp     LCAD6                   ; restore default I/O, zero CURDVC
+        jmp     LCAD6                   ; restore default I/O, CURDVC=$FF
 
 ; ============================================================
 ; CHKIN — redirect input from lfn (X = lfn).

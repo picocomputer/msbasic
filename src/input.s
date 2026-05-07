@@ -42,7 +42,7 @@ SYNERR4:
 
 RESPERR:
         lda     CURDVC
-        beq     LCA8F
+        bmi     LCA8F             ; $FF = no redirect → reprompt
         ldx     #ERR_BADDATA
         jmp     ERROR
 LCA8F:
@@ -56,16 +56,19 @@ LCA8F:
         rts
 
 ; ----------------------------------------------------------------------------
-; CHKIN/CHKOUT cleanup helper: close any redirected I/O and zero CURDVC.
+; CHKIN/CHKOUT cleanup helper: close any redirected I/O and reset CURDVC
+; to $FF (the "no redirect" sentinel; lfn 0 is a valid file slot, so 0
+; can't double as "no redirect").
 ; LCAD6 entry: also reload A from CURDVC (for callers that branch on it).
 ; LCAD8 entry: skip the load (CURDVC already in A or X).
-; Referenced from misc1.s (jmp LCAD6) and from GET below (bne LCAD8).
+; Referenced from misc1.s (jmp LCAD6) and from GET below (bpl LCAD8).
 ; ----------------------------------------------------------------------------
 LCAD6:
         lda     CURDVC
 LCAD8:
         jsr     CLRCH
-        stz     CURDVC
+        lda     #$FF
+        sta     CURDVC
         rts
 
 ; ----------------------------------------------------------------------------
@@ -88,7 +91,7 @@ LCAB6:
         lda     #$40
         jsr     PROCESS_INPUT_LIST
         ldx     CURDVC              ; GET# — restore default fd
-        bne     LCAD8
+        bpl     LCAD8               ; $FF (no redirect) → just rts
         rts
 
 ; ----------------------------------------------------------------------------
@@ -122,7 +125,7 @@ LCAF8:
         jmp     CONTROL_C_TYPED
 @no_cancel:
         lda     CURDVC
-        beq     LCB0C
+        bmi     LCB0C               ; $FF = no redirect
         lda     Z96
         and     #$02
         beq     LCB0C
@@ -132,7 +135,7 @@ LCB0C:
         lda     INPUTBUFFER
         bne     L2ABE
         lda     CURDVC
-        bne     LCAF8
+        bpl     LCAF8               ; redirected: retry input
         ; Empty buffer: don't short-circuit here — VALTYP isn't set
         ; yet. Fall into PROCESS_INPUT_LIST so PTRGET picks the
         ; numeric vs string path; L2B34 handles ?REDO for numeric,
@@ -141,7 +144,7 @@ LCB0C:
 
 NXIN:
         lda     CURDVC
-        bne     LCB21
+        bpl     LCB21               ; redirected: skip the '? ' prompt
         jsr     OUTQUES             ; '?'
         jsr     OUTSP
 LCB21:
@@ -191,7 +194,7 @@ PROCESS_INPUT_ITEM:
 L2AF0:
         jmi     FINDATA             ; READ
         lda     CURDVC
-        bne     LCB64
+        bpl     LCB64               ; redirected: skip '?' reprompt
         jsr     OUTQUES             ; '?' reprompt for next INPUT var
 LCB64:
         jsr     NXIN
@@ -308,7 +311,7 @@ L2B94:
         lda     (INPTR)             ; 65C02 zp-indirect
         beq     L2BA1
         lda     CURDVC
-        bne     L2BA1
+        bpl     L2BA1               ; redirected: suppress "?EXTRA IGNORED"
         lda     #<ERREXTRA
         ldy     #>ERREXTRA
         jmp     STROUT
