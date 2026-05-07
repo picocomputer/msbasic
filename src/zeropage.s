@@ -73,13 +73,9 @@ LFTAB:         .res MAX_OPEN_FILES
 
 tty_fd:        .res 1   ; fd for RP6502 tty: device
 con_fd:        .res 1   ; fd for RP6502 con: device
-out_fd:        .res 1   ; current CHROUT target; tty_fd by default, redirected by SAVE/CHKOUT
-in_fd:         .res 1   ; current input source for GET/INLIN's per-byte reads;
-                        ; tty_fd by default, redirected by CHKIN
-lsav_fd:       .res 1   ; SAVE/LOAD active fd. Set by both SAVE
-                        ; and LOAD; doubles as the LOAD-active
-                        ; flag (program.s:82 errors on a stray non-
-                        ; numbered line while LOAD feeds INLIN).
+out_fd:        .res 1   ; current output fd; tty_fd by default
+in_fd:         .res 1   ; current input fd; tty_fd by default
+lsav_fd:       .res 1   ; SAVE/LOAD active fd
 getln_vec:     .res 2   ; GETLN indirection; CHRIN by default, swapped by LOAD
 chrout_ptr:    .res 2   ; CHROUT target buffer; non-zero hi → buffer mode
 auto_run:      .res 1   ; cold-boot auto-load + RUN state machine
