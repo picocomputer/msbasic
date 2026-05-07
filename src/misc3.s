@@ -47,8 +47,8 @@ RTS4:
 
 ; ----------------------------------------------------------------------------
 LF457:
-        lda     TXTTAB
-        ldx     TXTTAB+1
+        lda     #<TXTTAB
+        ldx     #>TXTTAB
 LF45B:
         sta     JMPADRS+1
         stx     JMPADRS+2

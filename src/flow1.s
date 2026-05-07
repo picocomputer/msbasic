@@ -194,12 +194,8 @@ LC721:
 ; "RESTORE" STATEMENT
 ; ----------------------------------------------------------------------------
 RESTORE:
-        sec
-        lda     TXTTAB
-        sbc     #$01
-        ldy     TXTTAB+1
-        bcs     SETDA
-        dey
+        lda     #<(TXTTAB-1)
+        ldy     #>(TXTTAB-1)
 SETDA:
         sta     DATPTR
         sty     DATPTR+1

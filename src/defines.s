@@ -15,10 +15,15 @@ CONFIG_11A := 1
 CONFIG_11  := 1
 CONFIG_10A := 1
 
-; --- 6502 RAM ---
+; --- 6502 STACK ---
 STACK           := $0100
 STACK_TOP       := $FF
 SPACE_FOR_GOSUB := $3E
+
+; --- linker config ---
+.import __BASRAM_START__, __BASRAM_SIZE__
+TXTTAB := __BASRAM_START__ + 1
+MEMSIZ := __BASRAM_START__ + __BASRAM_SIZE__
 .import __FOUTBUF_START__, __FOUTBUF_SIZE__
 FOUTBUF        := __FOUTBUF_START__
 .assert __FOUTBUF_SIZE__ = $11, error, "FOUTBUF size must be 17 bytes"

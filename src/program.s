@@ -213,8 +213,8 @@ FIX_LINKS:
         jsr     LE33D
         jmp     L2351
 LE33D:
-        lda     TXTTAB
-        ldy     TXTTAB+1
+        lda     #<TXTTAB
+        ldy     #>TXTTAB
         sta     INDEX
         sty     INDEX+1
         clc
@@ -442,8 +442,8 @@ L24EA:
 ;	LOWTR POINTS AT LINE
 ; ----------------------------------------------------------------------------
 FNDLIN:
-        lda     TXTTAB
-        ldx     TXTTAB+1
+        lda     #<TXTTAB
+        ldx     #>TXTTAB
 FL1:
         ldy     #$01
         sta     LOWTR
@@ -482,17 +482,11 @@ L2520:
 NEW:
         bne     L2520
 SCRTCH:
-        lda     #$00
-        tay
-        sta     (TXTTAB),y
-        iny
-        sta     (TXTTAB),y
-        lda     TXTTAB
-        clc
-        adc     #$02
+        stz     TXTTAB
+        stz     TXTTAB+1
+        lda     #<(TXTTAB+2)
         sta     VARTAB
-        lda     TXTTAB+1
-        adc     #$00
+        lda     #>(TXTTAB+2)
         sta     VARTAB+1
 ; ----------------------------------------------------------------------------
 SETPTRS:
@@ -505,8 +499,8 @@ SETPTRS:
 CLEAR:
         bne     L256A
 CLEARC:
-        lda     MEMSIZ
-        ldy     MEMSIZ+1
+        lda     #<MEMSIZ
+        ldy     #>MEMSIZ
         sta     FRETOP
         sty     FRETOP+1
         lda     VARTAB
@@ -535,12 +529,9 @@ L256A:
 ; SET TXTPTR TO BEGINNING OF PROGRAM
 ; ----------------------------------------------------------------------------
 STXTPT:
-        clc
-        lda     TXTTAB
-        adc     #$FF
+        lda     #<(TXTTAB-1)
         sta     TXTPTR
-        lda     TXTTAB+1
-        adc     #$FF
+        lda     #>(TXTTAB-1)
         sta     TXTPTR+1
         rts
 

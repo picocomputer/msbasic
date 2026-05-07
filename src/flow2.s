@@ -54,8 +54,8 @@ GOTO:
         inx
         bcs     L280D
 L2809:
-        lda     TXTTAB
-        ldx     TXTTAB+1
+        lda     #<TXTTAB
+        ldx     #>TXTTAB
 L280D:
 .ifdef KBD
         jsr     LF457

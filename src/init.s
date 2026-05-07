@@ -1,5 +1,4 @@
 .segment "INIT"
-.import __BASRAM_START__, __BASRAM_SIZE__
 
 COLD_START:
         ; Seed RNDSEED with 31 bits of OS entropy. RNDSEED is 5 bytes
@@ -47,37 +46,19 @@ COLD_START:
         ldx #TEMPST
         stx TEMPPT
 
-        ; Program area: byte at __BASRAM_START__ is the synthetic
-        ; "previous-line terminator" NEWSTT reads on first iteration;
-        ; TXTTAB points one past it.
-        lda #<__BASRAM_START__
-        ldy #>__BASRAM_START__
-        sta TXTTAB
-        sty TXTTAB+1
-        ldy #$00
-        tya
-        sta (TXTTAB),y
-        inc TXTTAB
-
-        lda #<(__BASRAM_START__ + __BASRAM_SIZE__)
-        sta MEMSIZ
+        stz TXTTAB-1          ;synthetic "previous-line terminator"
+        lda #<MEMSIZ
         sta FRETOP
-        lda #>(__BASRAM_START__ + __BASRAM_SIZE__)
-        sta MEMSIZ+1
+        lda #>MEMSIZ
         sta FRETOP+1
-
         jsr SCRTCH
 
         lda #<rp6502_qt_banner
         ldy #>rp6502_qt_banner
         jsr STROUT
 
-        lda MEMSIZ
-        sec
-        sbc TXTTAB
-        tax
-        lda MEMSIZ+1
-        sbc TXTTAB+1
+        ldx #<(MEMSIZ - (TXTTAB + 2))
+        lda #>(MEMSIZ - (TXTTAB + 2))
         jsr rp6502_linprt
         lda #<rp6502_qt_bytes_free
         ldy #>rp6502_qt_bytes_free

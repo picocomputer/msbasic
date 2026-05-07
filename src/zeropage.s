@@ -21,13 +21,11 @@ INDEX:         .res 2
 DEST:          .res 2
 RESULT:        .res BYTES_FP
 RESULT_LAST  = RESULT + BYTES_FP-1
-TXTTAB:        .res 2
 VARTAB:        .res 2
 ARYTAB:        .res 2
 STREND:        .res 2
 FRETOP:        .res 2
 FRESPC:        .res 2
-MEMSIZ:        .res 2
 CURLIN:        .res 2
 OLDLIN:        .res 2
 OLDTEXT:       .res 2

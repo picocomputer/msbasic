@@ -180,13 +180,8 @@ L3311:
 ; ----------------------------------------------------------------------------
 GARBAG:
 
-.ifdef CONST_MEMSIZ
-        ldx     #<CONST_MEMSIZ
-        lda     #>CONST_MEMSIZ
-.else
-        ldx     MEMSIZ
-        lda     MEMSIZ+1
-.endif
+        ldx     #<MEMSIZ
+        lda     #>MEMSIZ
 FINDHIGHESTSTRING:
         stx     FRETOP
         sta     FRETOP+1
