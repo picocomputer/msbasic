@@ -7,8 +7,10 @@ add_subdirectory(tools)
 add_executable(basic)
 
 # Standalone CHRGET routine, packaged as a numeric-address asset that
-# the OS loads to $0000 (the ZPCHRGET-segment slot reserved in
-# src/rp6502.cfg / src/zeropage.s) at boot — no cold-boot copy needed.
+# the OS loads to $0000 at boot — no cold-boot copy needed. The same
+# chrget.s is .include'd by msbasic.s; msbasic.cfg places the CHRGET
+# segment first in ZP (file="") to reserve zp $00-$17 for the asset
+# while the bytes themselves are discarded from the ROM output.
 add_executable(chrget src/chrget.s)
 add_dependencies(basic chrget)
 target_link_options(chrget PRIVATE
@@ -19,7 +21,7 @@ set_target_properties(chrget PROPERTIES
 )
 
 rp6502_asset(basic help src/help.txt)
-rp6502_asset(basic 0x0000 ${CMAKE_CURRENT_BINARY_DIR}/chrget)
+rp6502_asset(basic 0x00E8 ${CMAKE_CURRENT_BINARY_DIR}/chrget)
 rp6502_executable(basic DATA 0xC000 RESET 0xC000)
 
 target_link_options(basic PRIVATE
