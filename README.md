@@ -20,11 +20,11 @@ basic [-c0|-c1|-c2] [<filename>]
 | `-c2`      | Caps mode invert — swap upper/lower case                    |
 | `<name>`   | Auto-`LOAD` the file, then `RUN` it                         |
 
-Last `-c<n>` wins; the first non-flag argument is the filename. The same modes are reachable at runtime via `CAPS <expr>`.
+The same modes are reachable at runtime via `CAPS <expr>`.
 
 ## File I/O
 
-Up to eight files may be open at once. Logical file numbers (lfn) are integers in the range `0..7`; they are independent of the kernel fd and are the handle you pass to every other file statement.
+Up to eight files may be open at once. Logical file numbers (lfn) are integers in the range `0..7`.
 
 ```basic
 OPEN <lfn>, <name$> [, <mode$>]

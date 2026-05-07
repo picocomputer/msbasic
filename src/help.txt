@@ -5,34 +5,18 @@ Released in 2025 with an MIT license:
 https://github.com/microsoft/BASIC-M6502
 
 Key changes and notes:
-  CTRL-C stops a running program or listing.
+  CTRL-C or SIGINT stops a running program or listing.
   Type a line number then press TAB to edit a line.
   LOAD and SAVE file format is plain ASCII.
   Keywords and variable names may be entered in lower case.
   RND() is seeded with hardware entropy at cold-start.
-  CAPS <expr> selects a caps mode; see launch options.
+  CAPS <expr> selects a caps mode; see launch arguments.
 
 Launch arguments:
   -c0     caps mode off (case as typed)
   -c1     caps mode on  (default - letters always upper case)
   -c2     caps mode invert (swap case)
   <name>  program is loaded and run automatically
-
-File I/O:
-  OPEN <lfn>,<name$>[,<mode$>]  open <name$> as logical file <lfn>
-  CLOSE <lfn>                   close logical file <lfn>
-  PRINT# <lfn>,<expr-list>      write to <lfn>
-  INPUT# <lfn>,<var-list>       read newline-delimited fields from <lfn>
-  GET# <lfn>,<var>              read one byte from <lfn>
-  CMD <lfn>[,<expr-list>]       redirect subsequent PRINT to <lfn>
-
-  <lfn> is 0..7. <mode$> defaults to "r" if omitted:
-    "r"           read-only
-    "w"           write, create, truncate
-    "a"           write, create, append
-    "rw" or "r+"  read/write
-    "w+"          read/write, create, truncate
-    "a+"          read/write, create, append
 
 RP6502 Monitor:
   Press CTRL-ALT-DEL or send BREAK to drop into the RP6502 monitor where
