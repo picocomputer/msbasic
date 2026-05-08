@@ -12,9 +12,16 @@
 .assert __INBUF1_START__ + 1 = __INBUF_START__, error, "INBUF1 must be immediately before INBUF"
 
 ; --- 6502 STACK ---
+; The stack start can not be changed
 STACK           := $0100
 STACK_TOP       := $FF
-SPACE_FOR_GOSUB := $3E
+; Headroom CHKMEM keeps above each operation's 2*N reservation so
+; the deepest non-re-gated sub-tree fits before the next gate fires.
+; Audited deepest chain: FRMEVL -> ^ -> LOG -> POLYNOMIAL_ODD ->
+; SERMAIN -> FMULT -> LOAD_ARG_FROM_YA, 24 bytes from gate; FRMEVL's
+; 2*N=2 covers the first two, so S>=22 suffices. rp6502 keeps IRQs
+; masked so no kernal-handler overhead is needed on top.
+SPACE_FOR_GOSUB := $20
 
 ; --- size math derived from BYTES_FP ---
 BYTES_FP           := 5
