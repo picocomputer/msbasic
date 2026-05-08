@@ -24,7 +24,7 @@ The same modes are reachable at runtime via `CAPS <expr>`.
 
 ## File I/O
 
-Up to eight files may be open at once. Logical file numbers (lfn) are integers in the range `0..7`.
+Up to sixteen files may be open at once. Logical file numbers (lfn) are integers in the range `0..15`.
 
 ```basic
 OPEN <lfn>, <name$> [, <mode$>]

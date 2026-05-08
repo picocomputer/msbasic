@@ -108,7 +108,7 @@ INPUT:
 L2A9E:
         jsr     ERRDIR
         lda     #$2C
-        sta     __INBUF_START__-1
+        sta     __INBUF1_START__
 LCAF8:
         jsr     NXIN
         ; INLIN signals cancel via A=$03 (CHRIN's @sigint).

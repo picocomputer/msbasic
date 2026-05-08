@@ -8,9 +8,12 @@ SPACE_FOR_GOSUB := $3E
 .assert __LFTAB_SIZE__ <= 256, error, "__LFTAB_START__ size must fit in X (<=256)"
 .import __FOUTBUF_START__, __FOUTBUF_SIZE__
 .assert __FOUTBUF_SIZE__ = $11, error, "__FOUTBUF_START__ size must be 17 bytes"
+.import __INBUF1_START__, __INBUF1_SIZE__
+.assert __INBUF1_SIZE__ = 1, error, "__ INBUF_1__ must be 1 byte"
 .import __INBUF_START__, __INBUF_SIZE__
 .assert __INBUF_SIZE__ = $100, error, "__INBUF_START__ size must be a full page"
 .assert (__INBUF_START__ & $FF) = 0, error, "__INBUF_START__ must be page-aligned"
+.assert __INBUF1_START__ + 1 = __INBUF_START__, error, "__ INBUF_1__ must be immediately before __INBUF_START__"
 .import __BASRAM_START__, __BASRAM_SIZE__
 TXTTAB := __BASRAM_START__ + 1
 MEMSIZ := __BASRAM_START__ + __BASRAM_SIZE__
