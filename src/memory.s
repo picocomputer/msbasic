@@ -4,6 +4,8 @@
 
 .segment "CODE"
 
+BYTES_PER_FRAME    := 2 * BYTES_FP + 8
+
 ; ----------------------------------------------------------------------------
 ; CALLED BY "NEXT" AND "FOR" TO SCAN THROUGH
 ; THE STACK FOR A FRAME WITH THE SAME VARIABLE.

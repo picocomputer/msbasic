@@ -13,9 +13,9 @@
 
 ; --- 6502 STACK ---
 ; The stack start can not be changed
-STACK           := $0100
+STACK               := $0100
 ; The top can be reserved
-STACK_TOP       := $FF
+STACK_TOP           := $FF
 ; Headroom CHKMEM keeps above each operation's 2*N reservation so
 ; the deepest non-re-gated sub-tree fits before the next gate fires.
 ; Audited deepest chain: FRMEVL -> ^ -> LOG -> POLYNOMIAL_ODD ->
@@ -24,16 +24,10 @@ STACK_TOP       := $FF
 ; when we forget to check this with a future change.
 SPACE_FOR_GOSUB := $20
 
-; --- size math derived from BYTES_FP ---
-BYTES_FP           := 5
-BYTES_PER_ELEMENT  := BYTES_FP
-BYTES_PER_VARIABLE := BYTES_FP + 2
-MANTISSA_BYTES     := BYTES_FP - 1
-BYTES_PER_FRAME    := 2 * BYTES_FP + 8
-FOR_STACK1         := 2 * BYTES_FP + 5
-FOR_STACK2         := BYTES_FP + 4
-MAX_EXPON          := 10
+; CR/LF are universal ASCII
+CR                  := 13
+LF                  := 10
 
-; CR/LF are universal ASCII;
-CR     := 13
-LF     := 10
+; Floating point and var size in bytes
+BYTES_FP            := 5
+BYTES_PER_VARIABLE  := BYTES_FP + 2

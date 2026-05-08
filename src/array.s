@@ -1,5 +1,7 @@
 .segment "CODE"
 
+BYTES_PER_ELEMENT  := BYTES_FP
+
 ; ----------------------------------------------------------------------------
 ; COMPUTE ADDRESS OF FIRST VALUE IN ARRAY
 ; ARYPNT = (LOWTR) + #DIMS*2 + 5

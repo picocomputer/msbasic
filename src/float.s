@@ -1,6 +1,8 @@
 .segment "CODE"
 
-TEMP1X = TEMP1+(5-BYTES_FP)
+MAX_EXPON          := 10
+MANTISSA_BYTES     := BYTES_FP - 1
+TEMP1X             := TEMP1+(5-BYTES_FP)
 
 ; ----------------------------------------------------------------------------
 ; ADD 0.5 TO FAC

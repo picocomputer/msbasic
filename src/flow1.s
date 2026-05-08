@@ -1,5 +1,8 @@
 .segment "CODE"
 
+FOR_STACK1         := 2 * BYTES_FP + 5
+FOR_STACK2         := BYTES_FP + 4
+
 ; ----------------------------------------------------------------------------
 ; "FOR" STATEMENT
 ;
