@@ -22,7 +22,7 @@ STACK_TOP           := $FF
 ; SERMAIN -> FMULT -> LOAD_ARG_FROM_YA, 24 bytes from gate; FRMEVL's
 ; 2*N=2 covers the first two, so S>=22 suffices. Plus a handful for
 ; when we forget to check this with a future change.
-SPACE_FOR_GOSUB := $20
+SPACE_FOR_GOSUB     := $20
 
 ; CR/LF are universal ASCII
 CR                  := 13

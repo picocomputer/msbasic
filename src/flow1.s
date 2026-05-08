@@ -1,8 +1,5 @@
 .segment "CODE"
 
-FOR_STACK1         := 2 * BYTES_FP + 5
-FOR_STACK2         := BYTES_FP + 4
-
 ; ----------------------------------------------------------------------------
 ; "FOR" STATEMENT
 ;
@@ -22,13 +19,13 @@ FOR:
         jsr     GTFORPNT
         bne     L2619
         txa
-        adc     #FOR_STACK1
+        adc     #(2 * BYTES_FP + 5)
         tax
         txs
 L2619:
         pla
         pla
-        lda     #FOR_STACK2
+        lda     #(BYTES_FP + 4)
         jsr     CHKMEM
         jsr     DATAN
         clc

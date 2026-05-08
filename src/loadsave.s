@@ -1,6 +1,3 @@
-; Picocomputer ASCII SAVE/LOAD. Replaces upstream src/msbasic/loadsave.s
-; (which is just a variant dispatcher and zero bytes for our config).
-;
 ; SAVE writes the program out as plain text — same byte stream LIST
 ; emits — by redirecting CHROUT (via out_fd) to the save fd and
 ; calling LIST.

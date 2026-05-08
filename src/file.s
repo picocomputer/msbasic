@@ -5,7 +5,7 @@
 ; stubs come live here.
 ;
 ; The logical-file table LFTAB lives in the LFTAB segment (msbasic.cfg);
-; entries are kernel fds, $FF for unused. Valid lfn range is
+; entries are RP6502-OS fds, $FF for unused. Valid lfn range is
 ; 0..__LFTAB_SIZE__-1 (segment size in msbasic.cfg), indexed directly.
 ;
 ; Read semantics: a read returning fewer bytes than requested is EOF

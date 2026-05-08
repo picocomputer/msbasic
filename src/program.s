@@ -1,9 +1,3 @@
-; error
-; line input, line editing
-; tokenize
-; detokenize
-; BASIC program memory management
-
 ; Tokenize/LIST scratch — aliases on FP scratch zp slots.
 ; TEMP3 (2 bytes) and TEMP2 (1 byte) are FP-only (float.s, trig.s),
 ; never touched during PARSE_INPUT_LINE or LIST. TEMP1 is reserved

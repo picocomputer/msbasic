@@ -1,11 +1,3 @@
-; Picocomputer INPUT/GET/READ. Replaces upstream src/msbasic/input.s.
-;
-; Behavior change: a blank Enter at the INPUT prompt no longer silently
-; breaks the program back to OK. For a numeric variable it prints
-; "?REDO FROM START" and re-runs the INPUT statement (same as a
-; malformed numeric response); for a string variable it assigns ""
-; and continues.
-;
 ; Upstream collapsed Ctrl-C and blank Enter into a single silent
 ; `clc; jmp CONTROL_C_TYPED` because most variants can't distinguish
 ; the two at the I/O layer. The RIA's SIGINT sidechannel can: INLIN
@@ -13,10 +5,11 @@
 ; route through CONTROL_C_TYPED with C=1 so PRINT_ERROR_LINNUM
 ; prints "?BREAK IN <line>" before RESTART.
 ;
-; INPUTH (INPUT# keyword handler) lives in file.s; it sets up the
-; redirect via CHKIN, then jsr's L2A9E to enter the INPUT body
-; past the prompt-string parse. L2A9E and LCAD6/LCAD8 are the
-; cross-file entry/cleanup points.
+; Behavior change: a blank Enter at the INPUT prompt no longer silently
+; breaks the program back to OK. For a numeric variable it prints
+; "?REDO FROM START" and re-runs the INPUT statement (same as a
+; malformed numeric response); for a string variable it assigns ""
+; and continues.
 
 .segment "CODE"
 

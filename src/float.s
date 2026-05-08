@@ -1,6 +1,5 @@
 .segment "CODE"
 
-MAX_EXPON          := 10
 MANTISSA_BYTES     := BYTES_FP - 1
 TEMP1X             := TEMP1+(5-BYTES_FP)
 
@@ -1065,7 +1064,7 @@ ADDACC:
 ; ----------------------------------------------------------------------------
 GETEXP:
         lda     EXPON
-        cmp     #MAX_EXPON
+        cmp     #10 ; MAX_EXPON
         bcc     L3C2C
         lda     #$64
         bit     EXPSGN

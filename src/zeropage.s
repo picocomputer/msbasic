@@ -1,4 +1,5 @@
 .zeropage
+
 RNDSEED:       .res BYTES_FP
 LINNUM:        .res 2
 CHARAC:        .res 1

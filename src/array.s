@@ -1,7 +1,5 @@
 .segment "CODE"
 
-BYTES_PER_ELEMENT  := BYTES_FP
-
 ; ----------------------------------------------------------------------------
 ; COMPUTE ADDRESS OF FIRST VALUE IN ARRAY
 ; ARYPNT = (LOWTR) + #DIMS*2 + 5
@@ -173,7 +171,7 @@ MAKE_NEW_ARRAY:
         lda     #$00
         tay
         sta     STRNG2+1
-        ldx     #BYTES_PER_ELEMENT
+        ldx     #BYTES_FP
         lda     VARNAM
         sta     (LOWTR),y
         bpl     L3078
