@@ -46,10 +46,10 @@ COLD_START:
         ldx #TEMPST
         stx TEMPPT
 
-        stz TXTTAB-1          ;synthetic "previous-line terminator"
-        lda #<MEMSIZ
+        stz __TXTTAB_START__  ;synthetic "previous-line terminator"
+        lda #<(__TXTTAB_START__+__TXTTAB_SIZE__)
         sta FRETOP
-        lda #>MEMSIZ
+        lda #>(__TXTTAB_START__+__TXTTAB_SIZE__)
         sta FRETOP+1
         jsr SCRTCH
 
@@ -57,8 +57,8 @@ COLD_START:
         ldy #>QT_BANNER
         jsr STROUT
 
-        ldx #<(MEMSIZ - (TXTTAB + 2))
-        lda #>(MEMSIZ - (TXTTAB + 2))
+        ldx #<(__TXTTAB_SIZE__ - 3)
+        lda #>(__TXTTAB_SIZE__ - 3)
         jsr rp6502_linprt
         lda #<QT_BYTES_FREE
         ldy #>QT_BYTES_FREE

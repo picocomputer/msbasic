@@ -54,8 +54,8 @@ GOTO:
         inx
         bcs     L280D
 L2809:
-        lda     #<TXTTAB
-        ldx     #>TXTTAB
+        lda     #<(__TXTTAB_START__+1)
+        ldx     #>(__TXTTAB_START__+1)
 L280D:
         jsr     FL1
         bcc     UNDERR

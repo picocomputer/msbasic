@@ -210,8 +210,8 @@ FIX_LINKS:
         jsr     LE33D
         jmp     L2351
 LE33D:
-        lda     #<TXTTAB
-        ldy     #>TXTTAB
+        lda     #<(__TXTTAB_START__+1)
+        ldy     #>(__TXTTAB_START__+1)
         sta     INDEX
         sty     INDEX+1
         clc
@@ -432,8 +432,8 @@ L24EA:
 ;	LOWTR POINTS AT LINE
 ; ----------------------------------------------------------------------------
 FNDLIN:
-        lda     #<TXTTAB
-        ldx     #>TXTTAB
+        lda     #<(__TXTTAB_START__+1)
+        ldx     #>(__TXTTAB_START__+1)
 FL1:
         ldy     #$01
         sta     LOWTR
@@ -472,11 +472,11 @@ L2520:
 NEW:
         bne     L2520
 SCRTCH:
-        stz     TXTTAB
-        stz     TXTTAB+1
-        lda     #<(TXTTAB+2)
+        stz     __TXTTAB_START__+1
+        stz     __TXTTAB_START__+2
+        lda     #<(__TXTTAB_START__+3)
         sta     VARTAB
-        lda     #>(TXTTAB+2)
+        lda     #>(__TXTTAB_START__+3)
         sta     VARTAB+1
 ; ----------------------------------------------------------------------------
 SETPTRS:
@@ -489,8 +489,8 @@ SETPTRS:
 CLEAR:
         bne     L256A
 CLEARC:
-        lda     #<MEMSIZ
-        ldy     #>MEMSIZ
+        lda     #<(__TXTTAB_START__+__TXTTAB_SIZE__)
+        ldy     #>(__TXTTAB_START__+__TXTTAB_SIZE__)
         sta     FRETOP
         sty     FRETOP+1
         lda     VARTAB
@@ -519,9 +519,9 @@ L256A:
 ; SET TXTPTR TO BEGINNING OF PROGRAM
 ; ----------------------------------------------------------------------------
 STXTPT:
-        lda     #<(TXTTAB-1)
+        lda     #<__TXTTAB_START__
         sta     TXTPTR
-        lda     #>(TXTTAB-1)
+        lda     #>__TXTTAB_START__
         sta     TXTPTR+1
         rts
 

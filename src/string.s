@@ -173,8 +173,8 @@ L3311:
 ; ----------------------------------------------------------------------------
 GARBAG:
 
-        ldx     #<MEMSIZ
-        lda     #>MEMSIZ
+        ldx     #<(__TXTTAB_START__+__TXTTAB_SIZE__)
+        lda     #>(__TXTTAB_START__+__TXTTAB_SIZE__)
 FINDHIGHESTSTRING:
         stx     FRETOP
         sta     FRETOP+1

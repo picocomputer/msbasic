@@ -154,16 +154,14 @@ LC721:
 ; "RESTORE" STATEMENT
 ; ----------------------------------------------------------------------------
 RESTORE:
-        lda     #<(TXTTAB-1)
-        ldy     #>(TXTTAB-1)
+        lda     #<__TXTTAB_START__
+        ldy     #>__TXTTAB_START__
 SETDA:
         sta     DATPTR
         sty     DATPTR+1
 RET2:
         rts
 
-; .include "iscntc.s"
-;!!! runs into "STOP"
 ; ----------------------------------------------------------------------------
 ; "STOP" STATEMENT
 ; ----------------------------------------------------------------------------
