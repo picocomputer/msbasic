@@ -427,9 +427,9 @@ L24EA:
 ;
 ; (LINNUM) = LINE # TO FIND
 ; IF NOT FOUND:  CARRY = 0
-;	LOWTR POINTS AT NEXT LINE
+;    LOWTR POINTS AT NEXT LINE
 ; IF FOUND:      CARRY = 1
-;	LOWTR POINTS AT LINE
+;    LOWTR POINTS AT LINE
 ; ----------------------------------------------------------------------------
 FNDLIN:
         lda     #<(__TXTTAB_START__+1)

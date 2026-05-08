@@ -1,10 +1,10 @@
 ; htasc - set the hi bit on the last byte of a string for termination
 ; (by Tom Greene)
 .macro htasc str
-	.repeat	.strlen(str)-1,I
-		.byte	.strat(str,I)
-	.endrep
-	.byte	.strat(str,.strlen(str)-1) | $80
+    .repeat    .strlen(str)-1,I
+        .byte    .strat(str,I)
+    .endrep
+    .byte    .strat(str,.strlen(str)-1) | $80
 .endmacro
 
 ; Two-bin keyword name tables. KEYWORDS_A holds names for tokens
@@ -33,50 +33,50 @@ DUMMY_B_START:
 
 .macro define_token_a token
         .segment "DUMMY_A"
-		.ifnblank token
-			token := <(*-DUMMY_A_START)+$80
-		.endif
-		.res 1
+        .ifnblank token
+            token := <(*-DUMMY_A_START)+$80
+        .endif
+        .res 1
 .endmacro
 
 .macro define_token_b token
         .segment "DUMMY_B"
-		.ifnblank token
-			token := <(*-DUMMY_B_START)+$C0
-		.endif
-		.res 1
+        .ifnblank token
+            token := <(*-DUMMY_B_START)+$C0
+        .endif
+        .res 1
 .endmacro
 
 ; lay down a keyword (bin B), optionally define a token symbol
 .macro keyword key, token
-		.segment "KEYWORDS_B"
-		htasc	key
-		define_token_b token
+        .segment "KEYWORDS_B"
+        htasc    key
+        define_token_b token
 .endmacro
 
 ; lay down a keyword and an address (RTS style, bin A statement),
 ; optionally define a token symbol
 .macro keyword_rts key, vec, token
         .segment "VECTORS"
-		.word	vec-1
-		.segment "KEYWORDS_A"
-		htasc	key
-		define_token_a token
+        .word    vec-1
+        .segment "KEYWORDS_A"
+        htasc    key
+        define_token_a token
 .endmacro
 
 ; lay down a keyword and an address (function in bin B; vector in
 ; UNFNC), optionally define a token symbol
 .macro keyword_addr key, vec, token
         .segment "VECTORS"
-		.addr	vec
-		.segment "KEYWORDS_B"
-		htasc	key
-		define_token_b token
+        .addr    vec
+        .segment "KEYWORDS_B"
+        htasc    key
+        define_token_b token
 .endmacro
 
 .macro count_tokens
         .segment "DUMMY_A"
-		NUM_TOKENS := <(*-DUMMY_A_START)
+        NUM_TOKENS := <(*-DUMMY_A_START)
 .endmacro
 
 .macro init_error_table
@@ -86,14 +86,14 @@ ERROR_MESSAGES:
 
 .macro define_error error, msg
         .segment "ERROR"
-		error := <(*-ERROR_MESSAGES)
-		htasc msg
+        error := <(*-ERROR_MESSAGES)
+        htasc msg
 .endmacro
 
 ;---------------------------------------------
 ; set the MSB of every byte of a string
 .macro asc80 str
-	.repeat	.strlen(str),I
-		.byte	.strat(str,I)+$80
-	.endrep
+    .repeat    .strlen(str),I
+        .byte    .strat(str,I)+$80
+    .endrep
 .endmacro

@@ -21,11 +21,11 @@ DIM:
 ; RETURN WITH ADDRESS IN VARPNT AND Y,A
 ;
 ; ACTUAL ACTIVITY CONTROLLED SOMEWHAT BY TWO FLAGS:
-;	DIMFLG -- NONZERO IF CALLED FROM "DIM"
-;		ELSE = 0
+;    DIMFLG -- NONZERO IF CALLED FROM "DIM"
+;        ELSE = 0
 ;
-;	SUBFLG -- = $00
-;		= $40 IF CALLED FROM "GETARYPT"
+;    SUBFLG -- = $00
+;        = $40 IF CALLED FROM "GETARYPT"
 ; ----------------------------------------------------------------------------
 PTRGET:
         ldx     #$00
@@ -116,7 +116,7 @@ L2F29:
 ; CHECK IF (A) IS ASCII LETTER A-Z
 ;
 ; RETURN CARRY = 1 IF A-Z
-;	= 0 IF NOT
+;    = 0 IF NOT
 ; ----------------------------------------------------------------------------
 ISLETC:
         cmp     #$41

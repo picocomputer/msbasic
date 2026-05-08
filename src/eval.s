@@ -207,9 +207,9 @@ SNTXERR:
 ; ----------------------------------------------------------------------------
 ; STACK (FAC)
 ; THREE ENTRY POINTS:
-; 	1, FROM FRMEVL
-;	2, FROM "STEP"
-;	3, FROM "FOR"
+;     1, FROM FRMEVL
+;     2, FROM "STEP"
+;     3, FROM "FOR"
 ; ----------------------------------------------------------------------------
 FRM_STACK1:
         lda     FACSIGN
@@ -259,8 +259,8 @@ GOEX:
 ;
 ; (A) = PRECEDENCE BYTE
 ; STACK:  1 -- CPRMASK
-;	5 -- (ARG)
-;	2 -- ADDR OF PERFORMER
+;         5 -- (ARG)
+;         2 -- ADDR OF PERFORMER
 ; ----------------------------------------------------------------------------
 FRM_PERFORM1:
         cmp     #$64
@@ -381,7 +381,7 @@ CHKCOM:
 ; ----------------------------------------------------------------------------
 ; UNLESS CHAR AT TXTPTR = (A), SYNTAX ERROR
 ; ----------------------------------------------------------------------------
-SYNCHR:	; XXX all CBM code calls SYNCHR instead of CHKCOM
+SYNCHR:    ; XXX all CBM code calls SYNCHR instead of CHKCOM
         ldy     #$00
         cmp     (TXTPTR),y
         bne     SYNERR
@@ -400,7 +400,7 @@ EQUL:
 ; ----------------------------------------------------------------------------
 FRM_VARIABLE:
         jsr     PTRGET
-FRM_VARIABLE_CALL	= *-1
+FRM_VARIABLE_CALL    = *-1
         sta     FAC_LAST-1
         sty     FAC_LAST
         ldx     VALTYP
@@ -557,4 +557,3 @@ CMPDONE:
         lda     #$FF
 L2E99:
         jmp     FLOAT
-

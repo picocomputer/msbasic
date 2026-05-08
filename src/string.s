@@ -130,7 +130,7 @@ PUTEMP:
 ; (A)=# BYTES SPACE TO MAKE
 ;
 ; RETURN WITH (A) SAME,
-;	AND Y,X = ADDRESS OF SPACE ALLOCATED
+;    AND Y,X = ADDRESS OF SPACE ALLOCATED
 ; ----------------------------------------------------------------------------
 GETSPA:
         lsr     DATAFLG
@@ -180,7 +180,7 @@ FINDHIGHESTSTRING:
         sta     FRETOP+1
         ldy     #$00
         sty     FNCNAM+1
-        sty     FNCNAM	; GC bugfix!
+        sty     FNCNAM    ; GC bugfix!
         lda     STREND
         ldx     STREND+1
         sta     LOWTR
@@ -212,7 +212,7 @@ L335A:
 L335F:
         sta     HIGHDS
         stx     HIGHDS+1
-        lda     #$03	; OSI GC bugfix -> $04 ???
+        lda     #$03    ; OSI GC bugfix -> $04 ???
         sta     DSCLEN
 L3367:
         lda     HIGHDS
@@ -246,7 +246,7 @@ L3376:
         bmi     L3367
         iny
         lda     (INDEX),y
-        ldy     #$00	; GC bugfix
+        ldy     #$00    ; GC bugfix
         asl     a
         adc     #$05
         adc     INDEX
@@ -328,7 +328,7 @@ L33FA:
 ; TO TOP AND GO BACK FOR ANOTHER
 ; ----------------------------------------------------------------------------
 MOVE_HIGHEST_STRING_TO_TOP:
-        lda     FNCNAM+1	; GC bugfix
+        lda     FNCNAM+1    ; GC bugfix
         ora     FNCNAM
         beq     L33FA
         lda     Z52

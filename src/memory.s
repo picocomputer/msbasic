@@ -11,14 +11,14 @@ BYTES_PER_FRAME    := 2 * BYTES_FP + 8
 ; THE STACK FOR A FRAME WITH THE SAME VARIABLE.
 ;
 ; (FORPNT) = ADDRESS OF VARIABLE IF "FOR" OR "NEXT"
-; 	= $XXFF IF CALLED FROM "RETURN"
-; 	<<< BUG: SHOULD BE $FFXX >>>
+;    = $XXFF IF CALLED FROM "RETURN"
+;    <<< BUG: SHOULD BE $FFXX >>>
 ;
-;	RETURNS .NE. IF VARIABLE NOT FOUND,
-;	(X) = STACK PNTR AFTER SKIPPING ALL FRAMES
+;    RETURNS .NE. IF VARIABLE NOT FOUND,
+;    (X) = STACK PNTR AFTER SKIPPING ALL FRAMES
 ;
-;	.EQ. IF FOUND
-;	(X) = STACK PNTR OF FRAME FOUND
+;    .EQ. IF FOUND
+;    (X) = STACK PNTR OF FRAME FOUND
 ; ----------------------------------------------------------------------------
 GTFORPNT:
         tsx
@@ -55,9 +55,9 @@ L22A1:
 ; MOVE BLOCK OF MEMORY UP
 ;
 ; ON ENTRY:
-;	(Y,A) = (HIGHDS) = DESTINATION END+1
-;	(LOWTR) = LOWEST ADDRESS OF SOURCE
-;	(HIGHTR) = HIGHEST SOURCE ADDRESS+1
+;    (Y,A) = (HIGHDS) = DESTINATION END+1
+;    (LOWTR) = LOWEST ADDRESS OF SOURCE
+;    (HIGHTR) = HIGHEST SOURCE ADDRESS+1
 ; ----------------------------------------------------------------------------
 BLTU:
         jsr     REASON

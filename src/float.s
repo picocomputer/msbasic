@@ -300,9 +300,9 @@ CON_ONE:
         .byte   $81,$00,$00,$00,$00
 POLY_LOG:
         .byte   $03
-		.byte   $7F,$5E,$56,$CB,$79
-		.byte   $80,$13,$9B,$0B,$64
-		.byte   $80,$76,$38,$93,$16
+        .byte   $7F,$5E,$56,$CB,$79
+        .byte   $80,$13,$9B,$0B,$64
+        .byte   $80,$76,$38,$93,$16
         .byte   $82,$38,$AA,$3B,$20
 CON_SQR_HALF:
         .byte   $80,$35,$04,$F3,$34
@@ -1340,15 +1340,15 @@ CON_HALF:
 ; AS 32-BIT INTEGERS, WITH ALTERNATING SIGNS
 ; ----------------------------------------------------------------------------
 DECTBL:
-		.byte	$FA,$0A,$1F,$00	; -100000000
-		.byte	$00,$98,$96,$80	; 10000000
-		.byte	$FF,$F0,$BD,$C0	; -1000000
-		.byte	$00,$01,$86,$A0	; 100000
-		.byte	$FF,$FF,$D8,$F0	; -10000
-		.byte   $00,$00,$03,$E8	; 1000
-		.byte	$FF,$FF,$FF,$9C	; -100
-		.byte   $00,$00,$00,$0A	; 10
-		.byte	$FF,$FF,$FF,$FF	; -1
+        .byte    $FA,$0A,$1F,$00    ; -100000000
+        .byte    $00,$98,$96,$80    ; 10000000
+        .byte    $FF,$F0,$BD,$C0    ; -1000000
+        .byte    $00,$01,$86,$A0    ; 100000
+        .byte    $FF,$FF,$D8,$F0    ; -10000
+        .byte    $00,$00,$03,$E8    ; 1000
+        .byte    $FF,$FF,$FF,$9C    ; -100
+        .byte    $00,$00,$00,$0A    ; 10
+        .byte    $FF,$FF,$FF,$FF    ; -1
 DECTBL_END:
 C_ZERO = CON_HALF + 2
 
@@ -1414,14 +1414,14 @@ CON_LOG_E:
         .byte   $81,$38,$AA,$3B,$29
 POLY_EXP:
         .byte   $07
-		.byte	$71,$34,$58,$3E,$56
-		.byte	$74,$16,$7E,$B3,$1B
-		.byte	$77,$2F,$EE,$E3,$85
+        .byte   $71,$34,$58,$3E,$56
+        .byte   $74,$16,$7E,$B3,$1B
+        .byte   $77,$2F,$EE,$E3,$85
         .byte   $7A,$1D,$84,$1C,$2A
-		.byte	$7C,$63,$59,$58,$0A
-		.byte	$7E,$75,$FD,$E7,$C6
-		.byte	$80,$31,$72,$18,$10
-		.byte	$81,$00,$00,$00,$00
+        .byte   $7C,$63,$59,$58,$0A
+        .byte   $7E,$75,$FD,$E7,$C6
+        .byte   $80,$31,$72,$18,$10
+        .byte   $81,$00,$00,$00,$00
 
 ; ----------------------------------------------------------------------------
 ; "EXP" FUNCTION
@@ -1480,9 +1480,9 @@ L3E6C:
 ; F(X) = X * P(X^2)
 ;
 ; WHERE:  X IS VALUE IN FAC
-;	Y,A POINTS AT COEFFICIENT TABLE
-;	FIRST BYTE OF COEFF. TABLE IS N
-;	COEFFICIENTS FOLLOW, HIGHEST POWER FIRST
+;    Y,A POINTS AT COEFFICIENT TABLE
+;    FIRST BYTE OF COEFF. TABLE IS N
+;    COEFFICIENTS FOLLOW, HIGHEST POWER FIRST
 ;
 ; P(X^2) COMPUTED USING NORMAL POLYNOMIAL SUBROUTINE
 ; ----------------------------------------------------------------------------
@@ -1503,9 +1503,9 @@ POLYNOMIAL_ODD:
 ; P(X) = C(0)*X^N + C(1)*X^(N-1) + ... + C(N)
 ;
 ; WHERE:  X IS VALUE IN FAC
-;	Y,A POINTS AT COEFFICIENT TABLE
-;	FIRST BYTE OF COEFF. TABLE IS N
-;	COEFFICIENTS FOLLOW, HIGHEST POWER FIRST
+;    Y,A POINTS AT COEFFICIENT TABLE
+;    FIRST BYTE OF COEFF. TABLE IS N
+;    COEFFICIENTS FOLLOW, HIGHEST POWER FIRST
 ; ----------------------------------------------------------------------------
 POLYNOMIAL:
         sta     STRNG2
