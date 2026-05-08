@@ -15,6 +15,8 @@ cmake_minimum_required(VERSION 3.17)
 #
 # Packages the executable produced by ``<name>`` into RP6502 ROM format.
 # Merges with specified ``roms...`` and those created with rp6502_asset().
+# When ``DATA`` is omitted, the linker output of ``<name>`` is not
+# included in the merge; only the asset/extra ROMs are bundled.
 # The word `file` may be used for any <addr> indicating the
 # address is to be read from the linker output in this order:
 # ``DATA <addr>`` Starting memory address to load data.
@@ -70,10 +72,10 @@ function(rp6502_executable name)
     set(tool_command "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/rp6502.py"
     )
+    set(executable_inputs)
     if (NOT data_addr STREQUAL "none")
         list(APPEND tool_command -a "${data_addr}")
-    else ()
-        message (FATAL_ERROR "rp6502_executable DATA address missing")
+        list(APPEND executable_inputs "$<TARGET_FILE:${name}>")
     endif ()
     if (NOT nmi_addr STREQUAL "none")
         list(APPEND tool_command -n "${nmi_addr}")
@@ -88,15 +90,14 @@ function(rp6502_executable name)
     endif ()
     list(APPEND tool_command
         -o "${rom_file}"
-        create "$<TARGET_FILE:${name}>"
+        create ${executable_inputs}
         -- ${all_extra_roms}
     )
     # The ROM is its own buildable artifact, depending on the executable
-    # plus every asset rom. ninja propagates input changes through this
-    # graph automatically; no POST_BUILD hooks, no LINK_DEPENDS surgery.
+    # (when DATA is given) plus every asset rom.
     add_custom_command(
         OUTPUT "${rom_file}"
-        DEPENDS "$<TARGET_FILE:${name}>" ${all_extra_roms}
+        DEPENDS ${executable_inputs} ${all_extra_roms}
         COMMAND ${CMAKE_COMMAND} -E rm -f "${rom_file}"
         COMMAND ${tool_command}
         VERBATIM
