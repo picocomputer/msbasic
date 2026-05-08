@@ -65,9 +65,7 @@ DEF:
         jsr     CHKCLS
         lda     #TOKEN_EQUAL
         jsr     SYNCHR
-.ifndef CONFIG_SMALL
         pha
-.endif
         lda     VARPNT+1
         pha
         lda     VARPNT
@@ -107,9 +105,7 @@ L31F3:
         lda     (FNCNAM),y
         beq     LD288
         sta     VARPNT+1
-.ifndef CONFIG_SMALL
         iny
-.endif
 L3219:
         lda     (VARPNT),y
         pha
@@ -156,9 +152,7 @@ L3250:
         pla
         iny
         sta     (FNCNAM),y
-.ifndef CONFIG_SMALL
         pla
         iny
         sta     (FNCNAM),y
-.endif
         rts

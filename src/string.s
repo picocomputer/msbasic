@@ -226,14 +226,10 @@ L336B:
 L3376:
         sta     INDEX
         stx     INDEX+1
-.ifdef CONFIG_SMALL
-        ldy     #$01
-.else
         ldy     #$00
         lda     (INDEX),y
         tax
         iny
-.endif
         lda     (INDEX),y
         php
         iny
@@ -246,19 +242,13 @@ L3376:
         sta     HIGHDS+1
         plp
         bpl     L3367
-.ifndef CONFIG_SMALL
         txa
         bmi     L3367
-.endif
         iny
         lda     (INDEX),y
-.ifdef CONFIG_CBM1_PATCHES
-        jsr     LE7F3 ; XXX patch, call into screen editor
-.else
         ldy     #$00	; GC bugfix
         asl     a
         adc     #$05
-.endif
         adc     INDEX
         sta     INDEX
         bcc     L33A7
@@ -278,10 +268,8 @@ L33B1:
 ; PROCESS A SIMPLE VARIABLE
 ; ----------------------------------------------------------------------------
 CHECK_SIMPLE_VARIABLE:
-.ifndef CONFIG_SMALL
         lda     (INDEX),y
         bmi     CHECK_BUMP
-.endif
         iny
         lda     (INDEX),y
         bpl     CHECK_BUMP
@@ -503,11 +491,7 @@ L34CD:
 ; RELEASE TEMPORARY DESCRIPTOR IF Y,A = LASTPT
 ; ----------------------------------------------------------------------------
 FRETMS:
-.ifdef KBD
-        cpy     #$00
-.else
         cpy     LASTPT+1
-.endif
         bne     L34E2
         cmp     LASTPT
         bne     L34E2

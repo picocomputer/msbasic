@@ -195,19 +195,12 @@ END4:
 L2701:
         lda     #<QT_BREAK
         ldy     #>QT_BREAK
-.ifndef KBD
         ldx     #$00
         stx     Z14
-.endif
         bcc     L270E
         jmp     PRINT_ERROR_LINNUM
 L270E:
         jmp     RESTART
-.ifdef KBD
-LE664:
-        tay
-        jmp     SNGFLT
-.endif
 
 ; ----------------------------------------------------------------------------
 ; "CONT" COMMAND
@@ -228,43 +221,3 @@ L271C:
         sty     CURLIN+1
 RET1:
         rts
-
-.ifdef KBD
-PRT:
-        jsr     GETBYT
-        txa
-; not ROR bug safe
-        ror     a
-        ror     a
-        ror     a
-        sta     $8F
-        rts
-
-LE68C:
-        ldy     #$12
-LE68E:
-        lda     LEA30,y
-        sta     $03A2,y
-        dey
-        bpl     LE68E
-        rts
-.endif
-
-.ifndef AIM65
-.if .def(CONFIG_NULL) || .def(CONFIG_PRINTNULLS)
-; CBM1 has the keyword removed,
-; but the code is still here
-NULL:
-        jsr     GETBYT
-        bne     RET1
-        inx
-        cpx     #NULL_MAX
-        bcs     L2739
-        dex
-        stx     Z15
-L2738:
-        rts
-L2739:
-        jmp     IQERR
-.endif
-.endif

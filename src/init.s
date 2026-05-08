@@ -53,15 +53,15 @@ COLD_START:
         sta FRETOP+1
         jsr SCRTCH
 
-        lda #<rp6502_qt_banner
-        ldy #>rp6502_qt_banner
+        lda #<QT_BANNER
+        ldy #>QT_BANNER
         jsr STROUT
 
         ldx #<(MEMSIZ - (TXTTAB + 2))
         lda #>(MEMSIZ - (TXTTAB + 2))
         jsr rp6502_linprt
-        lda #<rp6502_qt_bytes_free
-        ldy #>rp6502_qt_bytes_free
+        lda #<QT_BYTES_FREE
+        ldy #>QT_BYTES_FREE
         jsr STROUT
 
         ; Pull argv into INPUTBUFFER for parsing. The OS argv blob
@@ -191,8 +191,3 @@ COLD_START:
         jmp RESTART
 @argv_open_failed:
         jmp lsav_err_baddata      ; "?FILE DATA ERROR" then OK
-
-rp6502_qt_banner:
-        .byte "MICROSOFT BASIC", CR, LF, 0
-rp6502_qt_bytes_free:
-        .byte " BYTES FREE", CR, LF, 0

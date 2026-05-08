@@ -61,9 +61,7 @@ MI2:
 ; ----------------------------------------------------------------------------
 ARRAY:
         lda     DIMFLG
-.ifndef CONFIG_SMALL
         ora     VALTYP+1
-.endif
         pha
         lda     VALTYP
         pha
@@ -100,10 +98,8 @@ L2FDE:
         pla
         sta     VALTYP
         pla
-.ifndef CONFIG_SMALL
         sta     VALTYP+1
         and     #$7F
-.endif
         sta     DIMFLG
 ; ----------------------------------------------------------------------------
 ; SEARCH ARRAY TABLE FOR THIS ARRAY NAME
@@ -178,19 +174,15 @@ MAKE_NEW_ARRAY:
         ldx     #BYTES_PER_ELEMENT
         lda     VARNAM
         sta     (LOWTR),y
-.ifndef CONFIG_SMALL
         bpl     L3078
         dex
 L3078:
-.endif
         iny
         lda     VARNAM+1
         sta     (LOWTR),y
         bpl     L3081
         dex
-  .ifndef CONFIG_SMALL
         dex
-  .endif
 L3081:
         stx     STRNG2
         lda     EOLPNTR
@@ -312,24 +304,16 @@ L3124:
         bne     L30F6
         sta     STRNG2+1
         ldx     #BYTES_FP
-  .ifdef CONFIG_SMALL
-        lda     VARNAM+1
-  .else
         lda     VARNAM
-  .endif
         bpl     L3135
         dex
 L3135:
-  .ifdef CONFIG_SMALL
-        stx     RESULT+1
-  .else
         lda     VARNAM+1
         bpl     L313B
         dex
         dex
 L313B:
         stx     RESULT+2
-  .endif
         lda     #$00
         jsr     MULTIPLY_SUBS1
         txa

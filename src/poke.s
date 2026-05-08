@@ -1,6 +1,5 @@
 .segment "CODE"
 
-.ifndef CONFIG_NO_POKE
 ; ----------------------------------------------------------------------------
 ; EVALUATE "EXP1,EXP2"
 ;
@@ -24,12 +23,7 @@ COMBYTE:
 ; ----------------------------------------------------------------------------
 GETADR:
         lda     FACSIGN
-  .ifdef APPLE
-        nop ; PATCH
-        nop
-  .else
         bmi     GOIQ
-  .endif
         lda     FAC
         cmp     #$91
         bcs     GOIQ
@@ -50,31 +44,12 @@ PEEK:
         pha
         jsr     GETADR
         ldy     #$00
-.ifdef CBM1
-; disallow PEEK between $C000 and $DFFF
-        cmp     #$C0
-        bcc     LD6F3
-        cmp     #$E1
-        bcc     LD6F6
-LD6F3:
-.endif
-.ifdef CBM2
-		nop ; patch that disables the compares above
-		nop
-		nop
-		nop
-		nop
-		nop
-		nop
-		nop
-.endif
         lda     (LINNUM),y
         tay
         pla
         sta     LINNUM
         pla
         sta     LINNUM+1
-LD6F6:
         jmp     SNGFLT
 
 ; ----------------------------------------------------------------------------
@@ -107,4 +82,3 @@ L362C:
         beq     L362C
 RTS3:
         rts
-.endif
