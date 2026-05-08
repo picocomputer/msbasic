@@ -80,9 +80,6 @@ L2351:
         stx     TXTPTR
         sty     TXTPTR+1
         jsr     CHRGET
-; bug in pre-1.1: CHRGET sets Z on '\0'
-; and ':' - a line starting with ':' in
-; direct mode gets ignored
         tax
         beq     L2351
         ldx     #$FF
@@ -151,7 +148,7 @@ L23AD:
 PUT_NEW_LINE:
         jsr     SETPTRS
         jsr     LE33D
-        lda     INPUTBUFFER
+        lda     __INBUF_START__
         beq     L2351
         clc
         lda     VARTAB
@@ -191,7 +188,7 @@ L23E6:
         lda     LINNUM+1
         sta     (LOWTR),y
 
-        ; Text-copy loop: walks Y from EOLPNTR-1 down to 4. INPUTBUFFER
+        ; Text-copy loop: walks Y from EOLPNTR-1 down to 4. INBUF
         ; offset 0 lines up with (LOWTR) offset 4, so the `-4` on the
         ; src keeps src and dest sharing Y.
         ldy     EOLPNTR
@@ -199,7 +196,7 @@ L23E6:
         dey
         cpy     #$04
         bcc     @done
-        lda     INPUTBUFFER-4,y
+        lda     __INBUF_START__-4,y
         sta     (LOWTR),y
         bra     @txt
 @done:
@@ -256,7 +253,7 @@ PARSE_INPUT_LINE:
         ldy     #$04
         sty     DATAFLG
 L246C:
-        lda     INPUTBUFFER,x
+        lda     __INBUF_START__,x
         cmp     #$20
         beq     L24AC
         sta     ENDCHR
@@ -299,11 +296,10 @@ L2496:
 L2497:
         inx
 L2498:
-        lda     INPUTBUFFER,x
-        ; Reject high-bit-set chars so the legacy Commodore "second-letter
-        ; shifted" shortcut path can't trigger. With ASCII-only input the
-        ; sbc-equals-$80 endmark only fires for the table's bit-7 terminator.
-        ; Must run BEFORE any cmp — cmp clobbers the N flag with the
+        lda     __INBUF_START__,x
+        ; Reject high-bit-set input chars: the sbc-equals-$80 endmark below
+        ; must only fire for the table's bit-7 terminator, never for the
+        ; input byte. Must run BEFORE any cmp — cmp clobbers N with the
         ; comparison result, not the original A's bit 7.
         bmi     L24D7
         ; Case-fold a-z → A-Z so keywords are case-insensitive. The fold
@@ -343,8 +339,8 @@ L24AC:
         bcs     :+                    ; <'a' both skip the fold)
         and     #$DF
 :
-        sta     INPUTBUFFER-5,y
-        lda     INPUTBUFFER-5,y
+        sta     __INBUF_START__-5,y
+        lda     __INBUF_START__-5,y
         beq     L24EA
         sec
         sbc     #$3A
@@ -363,13 +359,13 @@ L24C1:
 ; BY COPYING CHARS UP TO ENDCHR.
 ; ----------------------------------------------------------------------------
 L24C8:
-        lda     INPUTBUFFER,x
+        lda     __INBUF_START__,x
         beq     L24AC
         cmp     ENDCHR
         beq     L24AC
 L24D0:
         iny
-        sta     INPUTBUFFER-5,y
+        sta     __INBUF_START__-5,y
         inx
         bne     L24C8
 ; ----------------------------------------------------------------------------
@@ -381,13 +377,8 @@ L24D7:
 L24DB:
         ; Y enters here at the position where the matcher's last sbc
         ; happened — that byte may be a regular char OR a high-bit
-        ; terminator (mismatch on the LAST byte of a keyword). The
-        ; original code did `lda MATHTBL+28+1,y`, which aliased onto
-        ; TOKEN_NAME_TABLE-1 (MATHTBL+30 fell at the start of the
-        ; KEYWORDS segment in the linker config); the off-by-one
-        ; let one tight loop fold both the in-keyword scan and the
-        ; just-mismatched-terminator case. With two bins we drop the
-        ; alias trick and check the terminator case explicitly.
+        ; terminator (mismatch on the LAST byte of a keyword). Check
+        ; the terminator case explicitly before scanning forward.
         lda     (TOKBASE),y
         bmi     @past_term      ; already at terminator: just step past
 @scan:
@@ -414,21 +405,20 @@ L24DB:
         stz     EOLPNTR
         bra     L2498
 @no_match:
-        lda     INPUTBUFFER,x
+        lda     __INBUF_START__,x
         bpl     L24AA
         ; High-bit byte outside a string literal — neither a keyword
         ; (the bmi guard in L2498 prevented a match) nor a valid
         ; literal char. Substitute $7F and let the line tokenize so
         ; the user can edit it; the parser will syntax-error on the
-        ; $7F at run time. (Upstream silently truncated the line
-        ; here, which made the bad input invisible until LIST.)
+        ; $7F at run time.
         lda     #$7F
         bra     L24AA
 ; ---END OF LINE — reached via L24AC's beq when a $00 has been stored.
 L24EA:
-        sta     INPUTBUFFER-3,y
+        sta     __INBUF_START__-3,y
         dec     TXTPTR+1
-        lda     #<(INPUTBUFFER-1)
+        lda     #<(__INBUF_START__-1)
         sta     TXTPTR
         rts
 

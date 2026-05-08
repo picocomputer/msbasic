@@ -82,7 +82,7 @@ NEWSTT:
         jsr     ISCNTC
         lda     TXTPTR
         ldy     TXTPTR+1
-        cpy     #>INPUTBUFFER
+        cpy     #>__INBUF_START__
         beq     LC6D4
         sta     OLDTEXT
         sty     OLDTEXT+1

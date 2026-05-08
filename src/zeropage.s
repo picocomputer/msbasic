@@ -67,7 +67,6 @@ STRNG1:        .res 2
 SGNCPR       = STRNG1
 FACEXTENSION = STRNG1+1
 STRNG2:        .res 2
-LFTAB:         .res MAX_OPEN_FILES
 
 tty_fd:        .res 1   ; fd for RP6502 tty: device
 con_fd:        .res 1   ; fd for RP6502 con: device

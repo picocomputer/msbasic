@@ -89,10 +89,10 @@ rp6502_push_string:
 ; ------------------------------------------------------------
 rp6502_init_io:
         ; Wipe LFTAB to all $FF (no lfn open).
-        ldx #(MAX_OPEN_FILES - 1)
+        ldx #<(__LFTAB_SIZE__ - 1)
         lda #$FF
 @wipe_lftab:
-        sta LFTAB,x
+        sta __LFTAB_START__,x
         dex
         bpl @wipe_lftab
         stz in_fd
@@ -144,7 +144,7 @@ rp6502_init_io:
 ; CHROUT
 ;   Write A to the current out_fd (tty: by default, file fd
 ;   during SAVE) — or, if tab completion has flipped chrout_ptr
-;   on, append A to the INPUTBUFFER staging area instead.
+;   on, append A to the INBUF staging area instead.
 ;   Preserves A, X, Y. Loops on partial writes (op may return
 ;   bytes_written < 1 while the OS-side tx queue drains).
 ; ------------------------------------------------------------
@@ -155,8 +155,8 @@ CHROUT:
                                   ; (which clobbers A and X but not Y)
 
         ; Buffer-redirect path: tab completion sets chrout_ptr to
-        ; INPUTBUFFER and uses the high byte as a "buffer mode" flag
-        ; (INPUTBUFFER lives at $FE00 so hi is always non-zero when
+        ; INBUF and uses the high byte as a "buffer mode" flag
+        ; (INBUF lives at $FE00 so hi is always non-zero when
         ; active). Sink the byte into the buffer instead of out_fd.
         lda chrout_ptr+1
         beq @write_fd
@@ -311,23 +311,23 @@ rp6502_tab_completion:
         jsr FNDLIN                ; C=1 if line found, LOWTR=line ptr
         bcc @done
 
-        ; --- Phase C: list the line into INPUTBUFFER via redirect. ---
+        ; --- Phase C: list the line into INBUF via redirect. ---
         ; Setting chrout_ptr+1 (now $FE) flips rp6502_chrout to
         ; buffer-fill mode. Enter LIST's per-line emitter at L25A6X
         ; with LOWTRX (= LOWTR) pre-loaded by FNDLIN; LINNUM is
         ; both range bounds, so the walker prints the matched line,
         ; CRDOs, advances to the next line, then exits via the
         ; range check (next line number is strictly higher).
-        lda #<INPUTBUFFER
+        lda #<__INBUF_START__
         sta chrout_ptr
-        lda #>INPUTBUFFER
+        lda #>__INBUF_START__
         sta chrout_ptr+1
         jsr L25A6X
         ; Restore normal CHROUT-to-fd and capture the buffer length,
         ; trimming the trailing CR LF that the end-of-line CRDO wrote.
         sec
         lda chrout_ptr
-        sbc #<INPUTBUFFER
+        sbc #<__INBUF_START__
         sbc #2                    ; -2 for CR LF (carry already set)
         tay                       ; Y = listing length, expected ≥ 1
         stz chrout_ptr+1          ; back to file-write mode
@@ -341,7 +341,7 @@ rp6502_tab_completion:
         ; bottom.
 @push_list:
         dey
-        lda INPUTBUFFER,y
+        lda __INBUF_START__,y
         sta RIA_XSTACK
         tya
         bne @push_list
@@ -439,7 +439,7 @@ CHRIN:
         ; exits with A=$03. INPUT (after jsr NXIN) checks A and
         ; bails through `sec; jmp CONTROL_C_TYPED` to "?BREAK IN
         ; <line>" + RESTART. Distinct from blank Enter (A=$0D, empty
-        ; INPUTBUFFER → continue with "" / 0) — upstream conflates
+        ; INBUF → continue with "" / 0) — upstream conflates
         ; them, we don't.
         lda #$03
         ply
@@ -473,7 +473,7 @@ CHRIN:
 ;        END4's `pla; pla` pops our caller's JSR ISCNTC frame;
 ;        RESTART → STKINI resets SP.
 ;
-;   While tab completion is filling INPUTBUFFER (chrout_ptr+1
+;   While tab completion is filling INBUF (chrout_ptr+1
 ;   non-zero), break checks are suspended: LIST's L25A6X calls
 ;   ISCNTC mid-listing, and a STOP from there would unwind with
 ;   CHROUT still routed to the buffer.

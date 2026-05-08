@@ -77,7 +77,7 @@ COLD_START:
         ldy #$00
 @argv_pop:
         lda RIA_XSTACK
-        sta INPUTBUFFER,y
+        sta __INBUF_START__,y
         iny
         bne @argv_pop
         rp6502_zxstack
@@ -90,10 +90,10 @@ COLD_START:
         stz DEST+1
         ldy #$02                  ; Y walks the offset table at INPUTBUFFER
 @argv_loop:
-        lda INPUTBUFFER,y
+        lda __INBUF_START__,y
         sta INDEX
         iny
-        lda INPUTBUFFER,y
+        lda __INBUF_START__,y
         sta INDEX+1
         iny
         ; null entry → end of table
@@ -103,10 +103,10 @@ COLD_START:
         ; offset → absolute pointer
         clc
         lda INDEX
-        adc #<INPUTBUFFER
+        adc #<__INBUF_START__
         sta INDEX
         lda INDEX+1
-        adc #>INPUTBUFFER
+        adc #>__INBUF_START__
         sta INDEX+1
 
         phy                       ; save loop Y across the (INDEX),y reads

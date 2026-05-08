@@ -85,9 +85,9 @@ GET:
         jsr     CHKIN
         stx     CURDVC
 LCAB6:
-        ldx     #<(INPUTBUFFER+1)
-        ldy     #>(INPUTBUFFER+1)
-        stz     INPUTBUFFER+1
+        ldx     #<(__INBUF_START__+1)
+        ldy     #>(__INBUF_START__+1)
+        stz     __INBUF_START__+1
         lda     #$40
         jsr     PROCESS_INPUT_LIST
         ldx     CURDVC              ; GET# — restore default fd
@@ -108,7 +108,7 @@ INPUT:
 L2A9E:
         jsr     ERRDIR
         lda     #$2C
-        sta     INPUTBUFFER-1
+        sta     __INBUF_START__-1
 LCAF8:
         jsr     NXIN
         ; INLIN signals cancel via A=$03 (CHRIN's @sigint).
@@ -131,7 +131,7 @@ LCAF8:
         jsr     LCAD6
         jmp     DATA
 LCB0C:
-        lda     INPUTBUFFER
+        lda     __INBUF_START__
         bne     L2ABE
         lda     CURDVC
         bpl     LCAF8               ; redirected: retry input
@@ -186,9 +186,9 @@ PROCESS_INPUT_ITEM:
         bit     INPUTFLG
         bvc     L2AF0               ; not GET → reprompt path
         jsr     GETIN            ; GET: pull one key
-        sta     INPUTBUFFER
-        ldx     #<(INPUTBUFFER-1)
-        ldy     #>(INPUTBUFFER-1)
+        sta     __INBUF_START__
+        ldx     #<(__INBUF_START__-1)
+        ldy     #>(__INBUF_START__-1)
         bra     L2AF8
 L2AF0:
         jmi     FINDATA             ; READ

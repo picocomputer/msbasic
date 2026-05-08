@@ -1133,7 +1133,7 @@ FOUT1:
         bpl     L3C73
         lda     #$2D
 L3C73:
-        sta     FOUTBUF,y
+        sta     __FOUTBUF_START__,y
         sta     FACSIGN
         sty     STRNG2
         iny
@@ -1210,12 +1210,12 @@ L3CDF:
         ldy     STRNG2
         lda     #$2E
         iny
-        sta     FOUTBUF,y
+        sta     __FOUTBUF_START__,y
         txa
         beq     L3CF0
         lda     #$30
         iny
-        sta     FOUTBUF,y
+        sta     __FOUTBUF_START__,y
 L3CF0:
         sty     STRNG2
 ; ----------------------------------------------------------------------------
@@ -1261,12 +1261,12 @@ L3D23:
         iny
         tax
         and     #$7F
-        sta     FOUTBUF,y
+        sta     __FOUTBUF_START__,y
         dec     INDX
         bne     L3D3E
         lda     #$2E
         iny
-        sta     FOUTBUF,y
+        sta     __FOUTBUF_START__,y
 L3D3E:
         sty     STRNG2
         ldy     VARPNT
@@ -1284,7 +1284,7 @@ L3D3E:
 LDD96:
         ldy     STRNG2
 L3D4E:
-        lda     FOUTBUF,y
+        lda     __FOUTBUF_START__,y
         dey
         cmp     #$30
         beq     L3D4E
@@ -1302,9 +1302,9 @@ L3D5B:
         tax
         lda     #$2D
 L3D6B:
-        sta     FOUTBUF+2,y
+        sta     __FOUTBUF_START__+2,y
         lda     #$45
-        sta     FOUTBUF+1,y
+        sta     __FOUTBUF_START__+1,y
         txa
         ldx     #$2F
         sec
@@ -1313,20 +1313,20 @@ L3D77:
         sbc     #$0A
         bcs     L3D77
         adc     #$3A
-        sta     FOUTBUF+4,y
+        sta     __FOUTBUF_START__+4,y
         txa
-        sta     FOUTBUF+3,y
+        sta     __FOUTBUF_START__+3,y
         lda     #$00
-        sta     FOUTBUF+5,y
+        sta     __FOUTBUF_START__+5,y
         beq     L3D94
 FOUT4:
-        sta     FOUTBUF,y
+        sta     __FOUTBUF_START__,y
 L3D8F:
         lda     #$00
-        sta     FOUTBUF+1,y
+        sta     __FOUTBUF_START__+1,y
 L3D94:
-        lda     #<(FOUTBUF+1)
-        ldy     #>(FOUTBUF+1)
+        lda     #<(__FOUTBUF_START__+1)
+        ldy     #>(__FOUTBUF_START__+1)
         rts
 
 ; ----------------------------------------------------------------------------

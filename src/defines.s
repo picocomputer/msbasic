@@ -1,22 +1,19 @@
-; --- Logicial file numbers for OPEN/CLOSE ---
-MAX_OPEN_FILES := 8 ; LFTAB size; valid OPEN# lfn range, 1 zp each
-
 ; --- 6502 STACK ---
 STACK           := $0100
 STACK_TOP       := $FF
 SPACE_FOR_GOSUB := $3E
 
 ; --- linker config ---
+.import __LFTAB_START__, __LFTAB_SIZE__
+.assert __LFTAB_SIZE__ <= 256, error, "__LFTAB_START__ size must fit in X (<=256)"
+.import __FOUTBUF_START__, __FOUTBUF_SIZE__
+.assert __FOUTBUF_SIZE__ = $11, error, "__FOUTBUF_START__ size must be 17 bytes"
+.import __INBUF_START__, __INBUF_SIZE__
+.assert __INBUF_SIZE__ = $100, error, "__INBUF_START__ size must be a full page"
+.assert (__INBUF_START__ & $FF) = 0, error, "__INBUF_START__ must be page-aligned"
 .import __BASRAM_START__, __BASRAM_SIZE__
 TXTTAB := __BASRAM_START__ + 1
 MEMSIZ := __BASRAM_START__ + __BASRAM_SIZE__
-.import __FOUTBUF_START__, __FOUTBUF_SIZE__
-FOUTBUF        := __FOUTBUF_START__
-.assert __FOUTBUF_SIZE__ = $11, error, "FOUTBUF size must be 17 bytes"
-.import __INBUF_START__, __INBUF_SIZE__
-INPUTBUFFER    := __INBUF_START__
-.assert __INBUF_SIZE__ = $100, error, "INPUTBUFFER size must be a full page"
-.assert (INPUTBUFFER & $FF) = 0, error, "INPUTBUFFER must be page-aligned"
 
 ; --- size math derived from BYTES_FP ---
 BYTES_FP           := 5

@@ -9,8 +9,8 @@ STR:
         pla
         pla
 LD353:
-        lda     #<FOUTBUF
-        ldy     #>FOUTBUF
+        lda     #<__FOUTBUF_START__
+        ldy     #>__FOUTBUF_START__
         bra     STRLIT
 
 ; ----------------------------------------------------------------------------
@@ -83,7 +83,7 @@ L32B6:
         stx     STRNG2+1
         lda     STRNG1+1
         beq     LD399
-        cmp     #>INPUTBUFFER
+        cmp     #>__INBUF_START__
         bne     PUTNEW
 LD399:
         tya
@@ -716,4 +716,3 @@ POINT:
         stx     TXTPTR
         sty     TXTPTR+1
         rts
-

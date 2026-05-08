@@ -4,9 +4,9 @@
 ; and just consume CHKOUT/CHKIN/CLRCH as black-box stubs — those
 ; stubs come live here.
 ;
-; The logical-file table LFTAB lives in zero page (zeropage.s);
+; The logical-file table LFTAB lives in the LFTAB segment (msbasic.cfg);
 ; entries are kernel fds, $FF for unused. Valid lfn range is
-; 0..MAX_OPEN_FILES-1 (configured in defines.s), indexed directly.
+; 0..__LFTAB_SIZE__-1 (segment size in msbasic.cfg), indexed directly.
 ;
 ; Read semantics: a read returning fewer bytes than requested is EOF
 ; (cc65 / RP6502 OS convention; matches loadsave.s). We never loop
@@ -31,9 +31,9 @@
 ; ============================================================
 OPEN:
         jsr     GETBYT                  ; X = lfn
-        cpx     #MAX_OPEN_FILES
+        cpx     #<__LFTAB_SIZE__
         bcs     file_err                ; lfn out of range
-        lda     LFTAB,x
+        lda     __LFTAB_START__,x
         cmp     #$FF
         bne     file_err                ; slot already in use
         phx                             ; stash lfn on the 6502 stack —
@@ -74,7 +74,7 @@ OPEN:
         pla                             ; A = lfn
         tax
         tya                             ; A = kernel fd
-        sta     LFTAB,x
+        sta     __LFTAB_START__,x
         rts
 @open_failed:
         pla                             ; drop the saved lfn
@@ -165,16 +165,16 @@ mode_to_flags:
 ; ============================================================
 CLOSE:
         jsr     GETBYT                  ; X = lfn
-        cpx     #MAX_OPEN_FILES
+        cpx     #<__LFTAB_SIZE__
         bcs     @done                   ; out-of-range → silently ignore
-        lda     LFTAB,x
+        lda     __LFTAB_START__,x
         cmp     #$FF
         beq     @done                   ; already closed
         phx                             ; save lfn across the close
         jsr     rp6502_close
         plx
         lda     #$FF
-        sta     LFTAB,x
+        sta     __LFTAB_START__,x
 @done:
         rts
 
@@ -207,9 +207,9 @@ INPUTH:
 ; through the file. Preserves X for the caller's stx CURDVC.
 ; ============================================================
 CHKIN:
-        cpx     #MAX_OPEN_FILES
+        cpx     #<__LFTAB_SIZE__
         bcs     @bad
-        lda     LFTAB,x
+        lda     __LFTAB_START__,x
         cmp     #$FF
         beq     @bad
         sta     in_fd
@@ -228,9 +228,9 @@ CHKIN:
 ; flow control. Preserves X.
 ; ============================================================
 CHKOUT:
-        cpx     #MAX_OPEN_FILES
+        cpx     #<__LFTAB_SIZE__
         bcs     @bad
-        lda     LFTAB,x
+        lda     __LFTAB_START__,x
         cmp     #$FF
         beq     @bad
         sta     out_fd
