@@ -9,4 +9,8 @@
             "statusBarVisibility": "hidden",
         }
     },
+    "rpw65.showErrors": false,
+    "rpw65.showWarnings": false,
+    "rpw65.syntax": "ca65",
+    "rpw65.case.lowerCaseCompletions": true,
 }

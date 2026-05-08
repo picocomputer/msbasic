@@ -1,8 +1,5 @@
-; Picocomputer ASCII SAVE/LOAD. Replaces upstream src/msbasic/loadsave.s
-; (which is just a variant dispatcher and zero bytes for our config).
-;
 ; SAVE writes the program out as plain text — same byte stream LIST
-; emits — by redirecting MONCOUT (via out_fd) to the save fd and
+; emits — by redirecting CHROUT (via out_fd) to the save fd and
 ; calling LIST.
 ;
 ; LOAD installs lsav_load_chrin as the GETLN hook so the existing
@@ -17,36 +14,8 @@
 ; through STKINI (which rebases SP to STACK_TOP every line) — that
 ; makes calling NUMBERED_LINE as a subroutine impossible, so we let
 ; the existing tail-jump architecture do the work.
-;
-; Both routines parse a string-valued filename via FRMEVL.
-;
-; Regular file I/O on the RP6502 is blocking: each syscall completes
-; with bytes_transferred == requested or returns -1 with errno set.
-; A short read therefore means EOF; we don't retry.
 
 .segment "CODE"
-
-; ============================================================
-; Filename helper: evaluate the next expression as a string and
-; push its bytes (in reverse) plus a trailing null to RIA_XSTACK,
-; ready for an OPEN call.
-; Trashes A/X/Y. Errors out on empty string or non-string type.
-; ============================================================
-lsav_push_filename:
-        jsr     FRMEVL                 ; evaluate expression → FAC
-        jsr     CHKSTR                 ; bomb out if not a string
-        jsr     FREFAC                 ; A=length, INDEX=ptr to bytes
-        tay                            ; Y=length
-        beq     lsav_err_baddata       ; empty filename ⇒ error
-        ; Filename only; the trailing 0 terminator OPEN expects
-        ; comes from short-stacking past the bottom of xstack.
-@push_loop:
-        dey                            ; Y goes length-1 → 0
-        lda     (INDEX),y
-        sta     RIA_XSTACK
-        tya
-        bne     @push_loop
-        rts
 
 lsav_err_baddata:
         ldx     #ERR_BADDATA
@@ -54,21 +23,17 @@ lsav_err_baddata:
 
 ; ============================================================
 ; SAVE "filename"
-; Open file for write (creating/truncating), redirect MONCOUT
+; Open file for write (creating/truncating), redirect CHROUT
 ; to the file fd, JSR LIST to detokenize the program, restore
-; MONCOUT back to tty, close the file.
+; CHROUT back to tty, close the file.
 ; ============================================================
-lsav_save:
-        jsr     lsav_push_filename
+SAVE:
+        jsr     ria_push_string
         lda     #O_WRONLY | O_CREAT | O_TRUNC
-        sta     RIA_A
-        lda     #RIA_OP_OPEN
-        sta     RIA_OP
-        jsr     RIA_SPIN
-        cpx     #$FF                   ; X=$FF on api_return_errno(-1)
-        beq     lsav_err_baddata
+        jsr     ria_open
+        bcs     lsav_err_baddata
         sta     lsav_fd
-        sta     out_fd                 ; redirect chrout to the file
+        sta     out_fd                 ; redirect CHROUT to the file
 
         ; LIST is normally entered from statement dispatch with A and
         ; the carry flag set up by CHRGOT (A = current char, carry
@@ -88,10 +53,7 @@ lsav_save:
         sta     out_fd
         lda     lsav_fd
         stz     lsav_fd
-        sta     RIA_A
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
+        jsr     ria_close
         cpx     #$FF
         beq     lsav_err_baddata       ; flush failed ⇒ file truncated
         rts
@@ -102,7 +64,7 @@ lsav_save:
 ; message goes there (not into the save file), closes the file
 ; fd, and clears the LOAD-active flag. A no-op when out_fd is
 ; already tty (the only redirector is SAVE). Called from
-; rp6502_iscntc before jmp STOP; STKINI in the STOP→ERROR→RESTART
+; ISCNTC before jmp STOP; STKINI in the STOP→ERROR→RESTART
 ; path resets SP, so we don't preserve registers.
 ; ============================================================
 lsav_abort:
@@ -112,10 +74,7 @@ lsav_abort:
         lda     tty_fd
         sta     out_fd
         lda     lsav_fd
-        sta     RIA_A
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
+        jsr     ria_close
         stz     lsav_fd
 @done:
         rts
@@ -135,19 +94,19 @@ lsav_abort:
 lsav_panic:
         lda     tty_fd
         sta     out_fd
-        lda     #<rp6502_inlin
+        sta     in_fd                  ; CHKIN may have redirected input
+                                       ; for INPUT#; restore so the next
+                                       ; GET#/INPUT# starts clean
+        lda     #<CHRIN
         sta     getln_vec
-        lda     #>rp6502_inlin
+        lda     #>CHRIN
         sta     getln_vec+1
         stz     auto_run
         lda     lsav_fd
         beq     @done
-        sta     RIA_A
         stz     lsav_fd
         phx
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
+        jsr     ria_close
         plx
 @done:
         rts
@@ -159,15 +118,11 @@ lsav_panic:
 ; feeds bytes from the file; on EOF it closes the file, restores
 ; the default GETLN, resets the stack, and jmps to RESTART.
 ; ============================================================
-lsav_load:
-        jsr     lsav_push_filename
+LOAD:
+        jsr     ria_push_string
         lda     #O_RDONLY
-        sta     RIA_A
-        lda     #RIA_OP_OPEN
-        sta     RIA_OP
-        jsr     RIA_SPIN
-        cpx     #$FF
-        jeq     lsav_err_baddata
+        jsr     ria_open
+        jcs     lsav_err_baddata
         sta     lsav_fd
         stz     TEMP1                  ; LOAD borrows TEMP1 as the
                                        ; per-line byte counter (float/
@@ -194,13 +149,10 @@ lsav_load:
 ; ============================================================
 lsav_load_err:
         lda     lsav_fd
-        sta     RIA_A
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
-        lda     #<rp6502_inlin
+        jsr     ria_close
+        lda     #<CHRIN
         sta     getln_vec
-        lda     #>rp6502_inlin
+        lda     #>CHRIN
         sta     getln_vec+1
         stz     lsav_fd
         stz     auto_run               ; cancel any pending auto-run
@@ -216,9 +168,7 @@ lsav_load_err:
 ; ============================================================
 lsav_load_chrin:
         ; INLIN holds its buffer index in X across each jsr GETLN, and
-        ; RIA_SPIN clobbers X. Preserve via the 6502 stack — we can't
-        ; use rp6502_sv_x/y because STROUT in the @eof path goes
-        ; through chrout, which writes those same slots as scratch.
+        ; RIA_SPIN clobbers X. Preserve via the 6502 stack.
         phx
         phy
 
@@ -267,13 +217,10 @@ lsav_load_chrin:
         bra     lsav_load_err          ; STKINI in ERROR resets SP
 
 @eof:
-        ; STROUT below clobbers chrout's scratch slots, but X/Y are on
+        ; STROUT below clobbers CHROUT's scratch slots, but X/Y are on
         ; the 6502 stack from entry, safe there.
         lda     lsav_fd
-        sta     RIA_A
-        lda     #RIA_OP_CLOSE
-        sta     RIA_OP
-        jsr     RIA_SPIN
+        jsr     ria_close
         stz     lsav_fd                ; clear LOAD-active flag
 
         lda     auto_run
@@ -281,9 +228,9 @@ lsav_load_chrin:
         beq     @start_auto_run
 
         ; Normal LOAD EOF: restore vec, print "OK", return CR.
-        lda     #<rp6502_inlin
+        lda     #<CHRIN
         sta     getln_vec
-        lda     #>rp6502_inlin
+        lda     #>CHRIN
         sta     getln_vec+1
         lsr     Z14
         lda     #<QT_OK
@@ -319,9 +266,9 @@ lsav_load_chrin:
         ; before INLIN exits with "RUN" in INPUTBUFFER and RESTART
         ; dispatches it.
         stz     auto_run
-        ldy     #<rp6502_inlin
+        ldy     #<CHRIN
         sty     getln_vec
-        ldy     #>rp6502_inlin
+        ldy     #>CHRIN
         sty     getln_vec+1
 @emit_done:
         ply

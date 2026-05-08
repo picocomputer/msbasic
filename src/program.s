@@ -1,8 +1,9 @@
-; error
-; line input, line editing
-; tokenize
-; detokenize
-; BASIC program memory management
+; Tokenize/LIST scratch — aliases on FP scratch zp slots.
+; TEMP3 (2 bytes) and TEMP2 (1 byte) are FP-only (float.s, trig.s),
+; never touched during PARSE_INPUT_LINE or LIST. TEMP1 is reserved
+; for lsav_load_chrin's per-line counter and must NOT be aliased.
+TOKBASE       = TEMP3
+TOKBASE_TOKEN = TEMP2
 
 .segment "CODE"
 
@@ -17,7 +18,7 @@ MEMERR:
 ; (CURLIN+1) = $FF IF IN DIRECT MODE
 ; ----------------------------------------------------------------------------
 ERROR:
-        ; Tear down LOAD/SAVE state before any chrout: if LOAD was
+        ; Tear down LOAD/SAVE state before any CHROUT: if LOAD was
         ; feeding lines (e.g. OOMERR in NUMBERED_LINE) we need to
         ; close the file and unhook getln_vec, otherwise RESTART
         ; would loop right back into the file. lsav_panic is a
@@ -26,9 +27,10 @@ ERROR:
         jsr     lsav_panic
         lsr     Z14
         lda     CURDVC    ; output
-        beq     LC366     ; is screen
+        bmi     LC366     ; $FF = no redirect
         jsr     CLRCH     ; otherwise redirect output back to screen
-        stz     CURDVC
+        lda     #$FF
+        sta     CURDVC
 LC366:
         jsr     CRDO
         jsr     OUTQUES
@@ -72,9 +74,6 @@ L2351:
         stx     TXTPTR
         sty     TXTPTR+1
         jsr     CHRGET
-; bug in pre-1.1: CHRGET sets Z on '\0'
-; and ':' - a line starting with ':' in
-; direct mode gets ignored
         tax
         beq     L2351
         ldx     #$FF
@@ -143,7 +142,7 @@ L23AD:
 PUT_NEW_LINE:
         jsr     SETPTRS
         jsr     LE33D
-        lda     INPUTBUFFER
+        lda     __INBUF_START__
         beq     L2351
         clc
         lda     VARTAB
@@ -183,7 +182,7 @@ L23E6:
         lda     LINNUM+1
         sta     (LOWTR),y
 
-        ; Text-copy loop: walks Y from EOLPNTR-1 down to 4. INPUTBUFFER
+        ; Text-copy loop: walks Y from EOLPNTR-1 down to 4. INBUF
         ; offset 0 lines up with (LOWTR) offset 4, so the `-4` on the
         ; src keeps src and dest sharing Y.
         ldy     EOLPNTR
@@ -191,7 +190,7 @@ L23E6:
         dey
         cpy     #$04
         bcc     @done
-        lda     INPUTBUFFER-4,y
+        lda     __INBUF_START__-4,y
         sta     (LOWTR),y
         bra     @txt
 @done:
@@ -205,8 +204,8 @@ FIX_LINKS:
         jsr     LE33D
         jmp     L2351
 LE33D:
-        lda     TXTTAB
-        ldy     TXTTAB+1
+        lda     #<(__TXTTAB_START__+1)
+        ldy     #>(__TXTTAB_START__+1)
         sta     INDEX
         sty     INDEX+1
         clc
@@ -248,7 +247,7 @@ PARSE_INPUT_LINE:
         ldy     #$04
         sty     DATAFLG
 L246C:
-        lda     INPUTBUFFERX,x
+        lda     __INBUF_START__,x
         cmp     #$20
         beq     L24AC
         sta     ENDCHR
@@ -270,6 +269,16 @@ L2484:
 ; WITH CURRENT CHAR FROM INPUT LINE
 ; ----------------------------------------------------------------------------
 L248C:
+        ; Reset bin-A pointer on every matcher entry. Earlier successful
+        ; matches in this line may have left TOKBASE/TOKBASE_TOKEN
+        ; pointing at bin B (e.g. the '=' operator), which would make
+        ; this matcher invocation skip bin A entirely.
+        lda     #<TOKEN_NAME_TABLE_A
+        sta     TOKBASE
+        lda     #>TOKEN_NAME_TABLE_A
+        sta     TOKBASE+1
+        lda     #$80
+        sta     TOKBASE_TOKEN
         sty     STRNG2
         ldy     #$00
         sty     EOLPNTR
@@ -281,11 +290,10 @@ L2496:
 L2497:
         inx
 L2498:
-        lda     INPUTBUFFERX,x
-        ; Reject high-bit-set chars so the legacy Commodore "second-letter
-        ; shifted" shortcut path can't trigger. With ASCII-only input the
-        ; sbc-equals-$80 endmark only fires for the table's bit-7 terminator.
-        ; Must run BEFORE any cmp — cmp clobbers the N flag with the
+        lda     __INBUF_START__,x
+        ; Reject high-bit-set input chars: the sbc-equals-$80 endmark below
+        ; must only fire for the table's bit-7 terminator, never for the
+        ; input byte. Must run BEFORE any cmp — cmp clobbers N with the
         ; comparison result, not the original A's bit 7.
         bmi     L24D7
         ; Case-fold a-z → A-Z so keywords are case-insensitive. The fold
@@ -298,11 +306,19 @@ L2498:
         and     #$DF
 L2498_NOFOLD:
         sec
-        sbc     TOKEN_NAME_TABLE,y
+        sbc     (TOKBASE),y
         beq     L2496
         cmp     #$80
         bne     L24D7
         ora     EOLPNTR
+        ; Inject bin base ($80 or $C0) into the matched-token byte.
+        ; A is currently $80 | EOLPNTR; ORing with TOKBASE_TOKEN
+        ; converts to $C0 | EOLPNTR when we're scanning bin B.
+        ; EOLPNTR is bin-local: reset on every L248C entry (fresh
+        ; matcher invocation) and again on bin switch in L24DB. It
+        ; never accumulates across bins — the eval.s TAND/OR reuse
+        ; of this slot is on a different code path.
+        ora     TOKBASE_TOKEN
 ; ----------------------------------------------------------------------------
 ; STORE CHARACTER OR TOKEN IN OUTPUT LINE
 ; ----------------------------------------------------------------------------
@@ -317,8 +333,8 @@ L24AC:
         bcs     :+                    ; <'a' both skip the fold)
         and     #$DF
 :
-        sta     INPUTBUFFER-5,y
-        lda     INPUTBUFFER-5,y
+        sta     __INBUF_START__-5,y
+        lda     __INBUF_START__-5,y
         beq     L24EA
         sec
         sbc     #$3A
@@ -337,13 +353,13 @@ L24C1:
 ; BY COPYING CHARS UP TO ENDCHR.
 ; ----------------------------------------------------------------------------
 L24C8:
-        lda     INPUTBUFFERX,x
+        lda     __INBUF_START__,x
         beq     L24AC
         cmp     ENDCHR
         beq     L24AC
 L24D0:
         iny
-        sta     INPUTBUFFER-5,y
+        sta     __INBUF_START__-5,y
         inx
         bne     L24C8
 ; ----------------------------------------------------------------------------
@@ -353,18 +369,50 @@ L24D7:
         ldx     TXTPTR
         inc     EOLPNTR
 L24DB:
+        ; Y enters here at the position where the matcher's last sbc
+        ; happened — that byte may be a regular char OR a high-bit
+        ; terminator (mismatch on the LAST byte of a keyword). Check
+        ; the terminator case explicitly before scanning forward.
+        lda     (TOKBASE),y
+        bmi     @past_term      ; already at terminator: just step past
+@scan:
         iny
-        lda     MATHTBL+28+1,y
-        bpl     L24DB
-        lda     TOKEN_NAME_TABLE,y
+        lda     (TOKBASE),y
+        bpl     @scan           ; scan forward to high-bit terminator
+@past_term:
+        iny
+        lda     (TOKBASE),y
         bne     L2498
-        lda     INPUTBUFFERX,x
+        ; Hit the bin's null terminator. If we're still in bin A,
+        ; switch to bin B and resume scanning at its first keyword.
+        ; If already in bin B, treat the input char as a literal.
+        lda     TOKBASE_TOKEN
+        cmp     #$C0
+        bcs     @no_match
+        lda     #<TOKEN_NAME_TABLE_B
+        sta     TOKBASE
+        lda     #>TOKEN_NAME_TABLE_B
+        sta     TOKBASE+1
+        lda     #$C0
+        sta     TOKBASE_TOKEN
+        ldy     #$00            ; index at bin B's first keyword
+        stz     EOLPNTR
+        bra     L2498
+@no_match:
+        lda     __INBUF_START__,x
         bpl     L24AA
-; ---END OF LINE------------------
+        ; High-bit byte outside a string literal — neither a keyword
+        ; (the bmi guard in L2498 prevented a match) nor a valid
+        ; literal char. Substitute $7F and let the line tokenize so
+        ; the user can edit it; the parser will syntax-error on the
+        ; $7F at run time.
+        lda     #$7F
+        bra     L24AA
+; ---END OF LINE — reached via L24AC's beq when a $00 has been stored.
 L24EA:
-        sta     INPUTBUFFER-3,y
+        sta     __INBUF_START__-3,y
         dec     TXTPTR+1
-        lda     #<(INPUTBUFFER-1)
+        lda     #<(__INBUF_START__-1)
         sta     TXTPTR
         rts
 
@@ -373,13 +421,13 @@ L24EA:
 ;
 ; (LINNUM) = LINE # TO FIND
 ; IF NOT FOUND:  CARRY = 0
-;	LOWTR POINTS AT NEXT LINE
+;    LOWTR POINTS AT NEXT LINE
 ; IF FOUND:      CARRY = 1
-;	LOWTR POINTS AT LINE
+;    LOWTR POINTS AT LINE
 ; ----------------------------------------------------------------------------
 FNDLIN:
-        lda     TXTTAB
-        ldx     TXTTAB+1
+        lda     #<(__TXTTAB_START__+1)
+        ldx     #>(__TXTTAB_START__+1)
 FL1:
         ldy     #$01
         sta     LOWTR
@@ -418,17 +466,11 @@ L2520:
 NEW:
         bne     L2520
 SCRTCH:
-        lda     #$00
-        tay
-        sta     (TXTTAB),y
-        iny
-        sta     (TXTTAB),y
-        lda     TXTTAB
-        clc
-        adc     #$02
+        stz     __TXTTAB_START__+1
+        stz     __TXTTAB_START__+2
+        lda     #<(__TXTTAB_START__+3)
         sta     VARTAB
-        lda     TXTTAB+1
-        adc     #$00
+        lda     #>(__TXTTAB_START__+3)
         sta     VARTAB+1
 ; ----------------------------------------------------------------------------
 SETPTRS:
@@ -441,8 +483,8 @@ SETPTRS:
 CLEAR:
         bne     L256A
 CLEARC:
-        lda     MEMSIZ
-        ldy     MEMSIZ+1
+        lda     #<(__TXTTAB_START__+__TXTTAB_SIZE__)
+        ldy     #>(__TXTTAB_START__+__TXTTAB_SIZE__)
         sta     FRETOP
         sty     FRETOP+1
         lda     VARTAB
@@ -471,12 +513,9 @@ L256A:
 ; SET TXTPTR TO BEGINNING OF PROGRAM
 ; ----------------------------------------------------------------------------
 STXTPT:
-        clc
-        lda     TXTTAB
-        adc     #$FF
+        lda     #<__TXTTAB_START__
         sta     TXTPTR
-        lda     TXTTAB+1
-        adc     #$FF
+        lda     #>__TXTTAB_START__
         sta     TXTPTR+1
         rts
 
@@ -527,7 +566,7 @@ L25C1:
 ; ---LIST ONE LINE----------------
 L25C3:
         sty     FORPNT
-        jsr     rp6502_linprt
+        jsr     LINPRTNS
         lda     #$20
 L25CA:
         ldy     FORPNT
@@ -556,22 +595,36 @@ L25E5:
         rts
 L25E8:
         bpl     L25CE
+        sty     FORPNT          ; save program-memory Y BEFORE clobbering for table lookup
+        ; Bit 7 always set on tokens, so "bit 6 set" ≡ "byte ≥ $C0".
+        ; CMP preserves A and leaves carry already set for bin B's SBC.
+        cmp     #$C0
+        bcs     @bin_b
         sec
-        sbc     #$7F
+        sbc     #$7F            ; A = 1-based index in bin A
+        ldx     #<TOKEN_NAME_TABLE_A
+        ldy     #>TOKEN_NAME_TABLE_A
+        bra     @set_base
+@bin_b:
+        sbc     #$BF            ; A = 1-based index in bin B (carry already set)
+        ldx     #<TOKEN_NAME_TABLE_B
+        ldy     #>TOKEN_NAME_TABLE_B
+@set_base:
+        stx     TOKBASE
+        sty     TOKBASE+1
         tax
-        sty     FORPNT
         ldy     #$FF
 L25F2:
         dex
         beq     L25FD
 L25F5:
         iny
-        lda     TOKEN_NAME_TABLE,y
+        lda     (TOKBASE),y
         bpl     L25F5
         bmi     L25F2
 L25FD:
         iny
-        lda     TOKEN_NAME_TABLE,y
+        lda     (TOKBASE),y
         bmi     L25CA
         jsr     OUTDO
         bra     L25FD

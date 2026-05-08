@@ -1,79 +1,33 @@
-; Picocomputer 6502 BASIC variant configuration.
-; Replaces upstream src/msbasic/defines.s + defines_<variant>.s.
-;
-; All bug fixes, none of the platform-specific baggage, plus CONFIG_FILE
-; so the file-support infrastructure is wired in for Phase 3. No
-; CBM/CBM_ALL/DATAFLG/SCRTCH_ORDER markers — those only gate code paths
-; in our owned files, which we strip.
+; --- linker config imports and validation ---
+.import __TXTTAB_START__, __TXTTAB_SIZE__
+.import __LFTAB_START__, __LFTAB_SIZE__
+.assert __LFTAB_SIZE__ <= 256, error, "LFTAB size must fit in X (<=256)"
+.import __FOUTBUF_START__, __FOUTBUF_SIZE__
+.assert __FOUTBUF_SIZE__ = $11, error, "FOUTBUF size must be 17 bytes"
+.import __INBUF1_START__, __INBUF1_SIZE__
+.assert __INBUF1_SIZE__ = 1, error, "INBUF1 must be 1 byte"
+.import __INBUF_START__, __INBUF_SIZE__
+.assert __INBUF_SIZE__ = $100, error, "INBUF size must be a full page"
+.assert (__INBUF_START__ & $FF) = 0, error, "INBUF must be page-aligned"
+.assert __INBUF1_START__ + 1 = __INBUF_START__, error, "INBUF1 must be immediately before INBUF"
 
-.import __INPUT_START__
+; --- 6502 STACK ---
+; The stack start can not be changed
+STACK               := $0100
+; The top can be reserved
+STACK_TOP           := $FF
+; Headroom CHKMEM keeps above each operation's 2*N reservation so
+; the deepest non-re-gated sub-tree fits before the next gate fires.
+; Audited deepest chain: FRMEVL -> ^ -> LOG -> POLYNOMIAL_ODD ->
+; SERMAIN -> FMULT -> LOAD_ARG_FROM_YA, 24 bytes from gate; FRMEVL's
+; 2*N=2 covers the first two, so S>=22 suffices. Plus a handful for
+; when we forget to check this with a future change.
+SPACE_FOR_GOSUB     := $20
 
-; --- config flags for mist64 sources ---
-CONFIG_FILE                   := 1     ; TODO file I/O
-CONFIG_NO_CR                  := 1     ; no auto-CR, terminal line wraps
-CONFIG_NO_LINE_EDITING        := 1     ; host owns line editing
-CONFIG_NO_INPUTBUFFER_ZP      := 1     ; INPUTBUFFER lives in main RAM
-CONFIG_NO_READ_Y_IS_ZERO_HACK := 1     ; bug fix
-CONFIG_PEEK_SAVE_LINNUM       := 1     ; bug fix
-CONFIG_SAFE_NAMENOTFOUND      := 1     ; bug fix: NAMENOTFOUND high-byte retaddr check
+; CR/LF are universal ASCII
+CR                  := 13
+LF                  := 10
 
-; --- enable all fixes up to latest version 2.0C ---
-CONFIG_2C  := 1
-CONFIG_2B  := 1
-CONFIG_2A  := 1
-CONFIG_2   := 1
-CONFIG_11A := 1
-CONFIG_11  := 1
-CONFIG_10A := 1
-
-; --- Picocomputer memory layout ---
-INPUTBUFFER  := __INPUT_START__
-INPUTBUFFERX := INPUTBUFFER & $FF00
-STACK        := $0100
-STACK2       := STACK
-
-; --- BASIC sizing constants ---
-SPACE_FOR_GOSUB := $3E
-STACK_TOP       := $FF
-
-; --- I/O hooks ---
-; MONRDKEY/GETIN: non-blocking ("get key if one's ready"), A=0,Z=1 on empty.
-; CHRIN: blocking line-input read used by INLIN's GETLN — must wait for a
-;        byte and translate the host's LF to CR.
-MONCOUT  := rp6502_chrout
-MONRDKEY := rp6502_getin
-ISCNTC   := rp6502_iscntc
-CHRIN    := rp6502_inlin
-CHROUT   := rp6502_chrout
-GETIN    := rp6502_getin
-
-; --- SAVE/LOAD routed to RIA-backed file I/O in loadsave.s ---
-LOAD   := lsav_load
-SAVE   := lsav_save
-
-; --- Stubbed keyword handlers (parser tokenizes them, dispatch RTSes) ---
-INPUTH := rp6502_rts_stub              ; INPUT#
-OPEN   := rp6502_rts_stub
-CLOSE  := rp6502_rts_stub
-SYS    := rp6502_rts_stub
-
-; --- Stubbed KERNAL-style I/O hooks (called by upstream's CONFIG_FILE
-;     paths to redirect I/O to/from a fildes; we have no fildes layer
-;     yet, so each is a no-op until file I/O is wired up) ---
-CHKIN  := rp6502_rts_stub              ; switch input device
-CHKOUT := rp6502_rts_stub              ; switch output device
-CLRCH  := rp6502_rts_stub              ; reset I/O to default device
-
-; --- size math derived from BYTES_FP (replaces defines.s:52-93) ---
-BYTES_FP           := 5
-BYTES_PER_ELEMENT  := BYTES_FP
-BYTES_PER_VARIABLE := BYTES_FP + 2
-MANTISSA_BYTES     := BYTES_FP - 1
-BYTES_PER_FRAME    := 2 * BYTES_FP + 8
-FOR_STACK1         := 2 * BYTES_FP + 5
-FOR_STACK2         := BYTES_FP + 4
-MAX_EXPON          := 10
-
-; CR/LF are universal ASCII;
-CR     := 13
-LF     := 10
+; Floating point and var size in bytes
+BYTES_FP            := 5
+BYTES_PER_VARIABLE  := BYTES_FP + 2

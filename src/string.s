@@ -1,4 +1,5 @@
 .segment "CODE"
+
 ; ----------------------------------------------------------------------------
 ; "STR$" FUNCTION
 ; ----------------------------------------------------------------------------
@@ -9,13 +10,9 @@ STR:
         pla
         pla
 LD353:
-        lda     #<(STACK2-1)
-        ldy     #>(STACK2-1)
-.if STACK2 > $0100
-        bne     STRLIT
-.else
-        beq     STRLIT
-.endif
+        lda     #<__FOUTBUF_START__
+        ldy     #>__FOUTBUF_START__
+        bra     STRLIT
 
 ; ----------------------------------------------------------------------------
 ; GET SPACE AND MAKE DESCRIPTOR FOR STRING WHOSE
@@ -86,13 +83,8 @@ L32AA:
 L32B6:
         stx     STRNG2+1
         lda     STRNG1+1
-.ifdef CONFIG_NO_INPUTBUFFER_ZP
         beq     LD399
-        cmp     #>INPUTBUFFER
-.elseif .def(AIM65)
-        beq     LD399
-        cmp     #$01
-.endif
+        cmp     #>__INBUF_START__
         bne     PUTNEW
 LD399:
         tya
@@ -124,9 +116,7 @@ PUTEMP:
         ldy     #$00
         stx     FAC_LAST-1
         sty     FAC_LAST
-.ifdef CONFIG_2
         sty     FACEXTENSION
-.endif
         dey
         sty     VALTYP
         stx     LASTPT
@@ -141,7 +131,7 @@ PUTEMP:
 ; (A)=# BYTES SPACE TO MAKE
 ;
 ; RETURN WITH (A) SAME,
-;	AND Y,X = ADDRESS OF SPACE ALLOCATED
+;    AND Y,X = ADDRESS OF SPACE ALLOCATED
 ; ----------------------------------------------------------------------------
 GETSPA:
         lsr     DATAFLG
@@ -184,21 +174,14 @@ L3311:
 ; ----------------------------------------------------------------------------
 GARBAG:
 
-.ifdef CONST_MEMSIZ
-        ldx     #<CONST_MEMSIZ
-        lda     #>CONST_MEMSIZ
-.else
-        ldx     MEMSIZ
-        lda     MEMSIZ+1
-.endif
+        ldx     #<(__TXTTAB_START__+__TXTTAB_SIZE__)
+        lda     #>(__TXTTAB_START__+__TXTTAB_SIZE__)
 FINDHIGHESTSTRING:
         stx     FRETOP
         sta     FRETOP+1
         ldy     #$00
         sty     FNCNAM+1
-.ifdef CONFIG_2
-        sty     FNCNAM	; GC bugfix!
-.endif
+        sty     FNCNAM    ; GC bugfix!
         lda     STREND
         ldx     STREND+1
         sta     LOWTR
@@ -230,7 +213,7 @@ L335A:
 L335F:
         sta     HIGHDS
         stx     HIGHDS+1
-        lda     #$03	; OSI GC bugfix -> $04 ???
+        lda     #$03    ; OSI GC bugfix -> $04 ???
         sta     DSCLEN
 L3367:
         lda     HIGHDS
@@ -244,14 +227,10 @@ L336B:
 L3376:
         sta     INDEX
         stx     INDEX+1
-.ifdef CONFIG_SMALL
-        ldy     #$01
-.else
         ldy     #$00
         lda     (INDEX),y
         tax
         iny
-.endif
         lda     (INDEX),y
         php
         iny
@@ -264,21 +243,13 @@ L3376:
         sta     HIGHDS+1
         plp
         bpl     L3367
-.ifndef CONFIG_SMALL
         txa
         bmi     L3367
-.endif
         iny
         lda     (INDEX),y
-.ifdef CONFIG_CBM1_PATCHES
-        jsr     LE7F3 ; XXX patch, call into screen editor
-.else
-  .ifdef CONFIG_11
-        ldy     #$00	; GC bugfix
-  .endif
+        ldy     #$00    ; GC bugfix
         asl     a
         adc     #$05
-.endif
         adc     INDEX
         sta     INDEX
         bcc     L33A7
@@ -298,10 +269,8 @@ L33B1:
 ; PROCESS A SIMPLE VARIABLE
 ; ----------------------------------------------------------------------------
 CHECK_SIMPLE_VARIABLE:
-.ifndef CONFIG_SMALL
         lda     (INDEX),y
         bmi     CHECK_BUMP
-.endif
         iny
         lda     (INDEX),y
         bpl     CHECK_BUMP
@@ -360,19 +329,11 @@ L33FA:
 ; TO TOP AND GO BACK FOR ANOTHER
 ; ----------------------------------------------------------------------------
 MOVE_HIGHEST_STRING_TO_TOP:
-.ifdef CONFIG_2
-        lda     FNCNAM+1	; GC bugfix
+        lda     FNCNAM+1    ; GC bugfix
         ora     FNCNAM
-.else
-        ldx     FNCNAM+1
-.endif
         beq     L33FA
         lda     Z52
-.ifndef CONFIG_10A
-        sbc     #$03
-.else
         and     #$04
-.endif
         lsr     a
         tay
         sta     Z52
@@ -531,11 +492,7 @@ L34CD:
 ; RELEASE TEMPORARY DESCRIPTOR IF Y,A = LASTPT
 ; ----------------------------------------------------------------------------
 FRETMS:
-.ifdef KBD
-        cpy     #$00
-.else
         cpy     LASTPT+1
-.endif
         bne     L34E2
         cmp     LASTPT
         bne     L34E2
@@ -620,9 +577,7 @@ MIDSTR:
         jsr     GETBYT
 L353F:
         jsr     SUBSTRING_SETUP
-.ifdef CONFIG_2
         beq     GOIQ
-.endif
         dex
         txa
         pha
@@ -644,15 +599,9 @@ L353F:
 SUBSTRING_SETUP:
         jsr     CHKCLS
         pla
-.ifndef CONFIG_11
-        sta     JMPADRS+1
-        pla
-        sta     JMPADRS+2
-.else
         tay
         pla
         sta     Z52
-.endif
         pla
         pla
         pla
@@ -661,30 +610,19 @@ SUBSTRING_SETUP:
         sta     DSCPTR
         pla
         sta     DSCPTR+1
-.ifdef CONFIG_11
         lda     Z52
         pha
         tya
         pha
-.endif
         ldy     #$00
         txa
-.ifndef CONFIG_2
-        beq     GOIQ
-.endif
-.ifndef CONFIG_11
-        inc     JMPADRS+1
-        jmp     (JMPADRS+1)
-.else
         rts
-.endif
 
 ; ----------------------------------------------------------------------------
 ; "LEN" FUNCTION
 ; ----------------------------------------------------------------------------
 LEN:
         jsr     GETSTR
-SNGFLT1:
         jmp     SNGFLT
 
 ; ----------------------------------------------------------------------------
@@ -707,11 +645,7 @@ ASC:
         ldy     #$00
         lda     (INDEX),y
         tay
-.ifndef CONFIG_11A
-        jmp     SNGFLT1
-.else
         jmp     SNGFLT
-.endif
 ; ----------------------------------------------------------------------------
 GOIQ:
         jmp     IQERR
@@ -783,4 +717,3 @@ POINT:
         stx     TXTPTR
         sty     TXTPTR+1
         rts
-

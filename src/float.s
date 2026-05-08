@@ -1,6 +1,7 @@
 .segment "CODE"
 
-TEMP1X = TEMP1+(5-BYTES_FP)
+MANTISSA_BYTES     := BYTES_FP - 1
+TEMP1X             := TEMP1+(5-BYTES_FP)
 
 ; ----------------------------------------------------------------------------
 ; ADD 0.5 TO FAC
@@ -29,38 +30,6 @@ FSUBT:
         jmp     FADDT
 
 ; ----------------------------------------------------------------------------
-; Commodore BASIC V2 Easter Egg
-; ----------------------------------------------------------------------------
-.ifdef CONFIG_EASTER_EGG
-EASTER_EGG:
-        lda     LINNUM
-        cmp     #<6502
-        bne     L3628
-        lda     LINNUM+1
-        sbc     #>6502
-        bne     L3628
-        sta     LINNUM
-        tay
-        lda     #$80
-        sta     LINNUM+1
-LD758:
-        ldx     #$0A
-LD75A:
-        lda     MICROSOFT-1,x
-        and     #$3F
-        sta     (LINNUM),y
-        iny
-        bne     LD766
-        inc     LINNUM+1
-LD766:
-        dex
-        bne     LD75A
-        dec     FORPNT
-        bne     LD758
-        rts
-.endif
-
-; ----------------------------------------------------------------------------
 ; SHIFT SMALLER ARGUMENT MORE THAN 7 BITS
 ; ----------------------------------------------------------------------------
 FADD1:
@@ -86,11 +55,7 @@ L365B:
         lda     ARG
 FADD2:
         tay
-.ifdef KBD
-        beq     RTS4
-.else
         beq     RTS3
-.endif
         sec
         sbc     FAC
         beq     FADD3
@@ -126,11 +91,9 @@ L369B:
         eor     #$FF
         adc     ARGEXTENSION
         sta     FACEXTENSION
-.ifndef CONFIG_SMALL
         lda     4,y
         sbc     4,x
         sta     FAC+4
-.endif
         lda     3,y
         sbc     3,x
         sta     FAC+3
@@ -158,24 +121,13 @@ L36C7:
         stx     FAC+1
         ldx     FAC+3
         stx     FAC+2
-.ifdef CONFIG_SMALL
-        ldx     FACEXTENSION
-        stx     FAC+3
-.else
         ldx     FAC+4
         stx     FAC+3
         ldx     FACEXTENSION
         stx     FAC+4
-.endif
         sty     FACEXTENSION
         adc     #$08
-.ifdef CONFIG_2B
-; bugfix?
-; fix does not exist on AppleSoft 2
         cmp     #(MANTISSA_BYTES+1)*8
-.else
-        cmp     #MANTISSA_BYTES*8
-.endif
         bne     L36C7
 
 ; ----------------------------------------------------------------------------
@@ -196,11 +148,9 @@ STA_IN_FAC_SIGN:
 FADD4:
         adc     ARGEXTENSION
         sta     FACEXTENSION
-.ifndef CONFIG_SMALL
         lda     FAC+4
         adc     ARG+4
         sta     FAC+4
-.endif
         lda     FAC+3
         adc     ARG+3
         sta     FAC+3
@@ -218,9 +168,7 @@ FADD4:
 NORMALIZE_FAC3:
         adc     #$01
         asl     FACEXTENSION
-.ifndef CONFIG_SMALL
         rol     FAC+4
-.endif
         rol     FAC+3
         rol     FAC+2
         rol     FAC+1
@@ -237,51 +185,11 @@ NORMALIZE_FAC5:
 NORMALIZE_FAC6:
         inc     FAC
         beq     OVERFLOW
-.ifndef CONFIG_ROR_WORKAROUND
         ror     FAC+1
         ror     FAC+2
         ror     FAC+3
-  .ifndef CONFIG_SMALL
         ror     FAC+4
-  .endif
         ror     FACEXTENSION
-.else
-        lda     #$00
-        bcc     L372E
-        lda     #$80
-L372E:
-        lsr     FAC+1
-        ora     FAC+1
-        sta     FAC+1
-        lda     #$00
-        bcc     L373A
-        lda     #$80
-L373A:
-        lsr     FAC+2
-        ora     FAC+2
-        sta     FAC+2
-        lda     #$00
-        bcc     L3746
-        lda     #$80
-L3746:
-        lsr     FAC+3
-        ora     FAC+3
-        sta     FAC+3
-        lda     #$00
-        bcc     L3752
-        lda     #$80
-L3752:
-        lsr     FAC+4
-        ora     FAC+4
-        sta     FAC+4
-        lda     #$00
-        bcc     L375E
-        lda     #$80
-L375E:
-        lsr     FACEXTENSION
-        ora     FACEXTENSION
-        sta     FACEXTENSION
-.endif
 L3764:
         rts
 
@@ -306,11 +214,9 @@ COMPLEMENT_FAC_MANTISSA:
         lda     FAC+3
         eor     #$FF
         sta     FAC+3
-.ifndef CONFIG_SMALL
         lda     FAC+4
         eor     #$FF
         sta     FAC+4
-.endif
         lda     FACEXTENSION
         eor     #$FF
         sta     FACEXTENSION
@@ -321,10 +227,8 @@ COMPLEMENT_FAC_MANTISSA:
 ; INCREMENT FAC MANTISSA
 ; ----------------------------------------------------------------------------
 INCREMENT_FAC_MANTISSA:
-.ifndef CONFIG_SMALL
         inc     FAC+4
         bne     RTS12
-.endif
         inc     FAC+3
         bne     RTS12
         inc     FAC+2
@@ -346,16 +250,10 @@ OVERFLOW:
 SHIFT_RIGHT1:
         ldx     #RESULT-1
 SHIFT_RIGHT2:
-.ifdef CONFIG_SMALL
-        ldy     3,x
-.else
         ldy     4,x
-.endif
         sty     FACEXTENSION
-.ifndef CONFIG_SMALL
         ldy     3,x
         sty     4,x
-.endif
         ldy     2,x
         sty     3,x
         ldy     1,x
@@ -374,7 +272,6 @@ SHIFT_RIGHT:
         tay
         lda     FACEXTENSION
         bcs     SHIFT_RIGHT5
-.ifndef CONFIG_ROR_WORKAROUND
 LB588:
         asl     1,x
         bcc     LB58E
@@ -389,83 +286,22 @@ LB58E:
 SHIFT_RIGHT4:
         ror     2,x
         ror     3,x
-  .ifndef CONFIG_SMALL
         ror     4,x
-  .endif
         ror     a
         iny
         bne     LB588
-.else
-L37C4:
-        pha
-        lda     1,x
-        and     #$80
-        lsr     1,x
-        ora     1,x
-        sta     1,x
-        .byte   $24
-SHIFT_RIGHT4:
-        pha
-        lda     #$00
-        bcc     L37D7
-        lda     #$80
-L37D7:
-        lsr     2,x
-        ora     2,x
-        sta     2,x
-        lda     #$00
-        bcc     L37E3
-        lda     #$80
-L37E3:
-        lsr     3,x
-        ora     3,x
-        sta     3,x
-        lda     #$00
-        bcc     L37EF
-        lda     #$80
-L37EF:
-        lsr     4,x
-        ora     4,x
-        sta     4,x
-        pla
-        php
-        lsr     a
-        plp
-        bcc     L37FD
-        ora     #$80
-L37FD:
-        iny
-        bne     L37C4
-.endif
 SHIFT_RIGHT5:
         clc
         rts
 
 ; ----------------------------------------------------------------------------
-.ifdef CONFIG_SMALL
-CON_ONE:
-        .byte   $81,$00,$00,$00
-POLY_LOG:
-		.byte	$02
-		.byte   $80,$19,$56,$62
-		.byte   $80,$76,$22,$F3
-		.byte   $82,$38,$AA,$40
-CON_SQR_HALF:
-		.byte   $80,$35,$04,$F3
-CON_SQR_TWO:
-		.byte   $81,$35,$04,$F3
-CON_NEG_HALF:
-		.byte   $80,$80,$00,$00
-CON_LOG_TWO:
-		.byte   $80,$31,$72,$18
-.else
 CON_ONE:
         .byte   $81,$00,$00,$00,$00
 POLY_LOG:
         .byte   $03
-		.byte   $7F,$5E,$56,$CB,$79
-		.byte   $80,$13,$9B,$0B,$64
-		.byte   $80,$76,$38,$93,$16
+        .byte   $7F,$5E,$56,$CB,$79
+        .byte   $80,$13,$9B,$0B,$64
+        .byte   $80,$76,$38,$93,$16
         .byte   $82,$38,$AA,$3B,$20
 CON_SQR_HALF:
         .byte   $80,$35,$04,$F3,$34
@@ -475,7 +311,6 @@ CON_NEG_HALF:
         .byte   $80,$80,$00,$00,$00
 CON_LOG_TWO:
         .byte   $80,$31,$72,$17,$F8
-.endif
 
 ; ----------------------------------------------------------------------------
 ; "LOG" FUNCTION
@@ -522,25 +357,17 @@ FMULT:
 ; FAC = ARG * FAC
 ; ----------------------------------------------------------------------------
 FMULTT:
-.ifndef CONFIG_11
-        beq     L3903
-.else
         jeq     L3903
-.endif
         jsr     ADD_EXPONENTS
         lda     #$00
         sta     RESULT
         sta     RESULT+1
         sta     RESULT+2
-.ifndef CONFIG_SMALL
         sta     RESULT+3
-.endif
         lda     FACEXTENSION
         jsr     MULTIPLY1
-.ifndef CONFIG_SMALL
         lda     FAC+4
         jsr     MULTIPLY1
-.endif
         lda     FAC+3
         jsr     MULTIPLY1
         lda     FAC+2
@@ -562,11 +389,9 @@ L38A7:
         tay
         bcc     L38C3
         clc
-.ifndef CONFIG_SMALL
         lda     RESULT+3
         adc     ARG+4
         sta     RESULT+3
-.endif
         lda     RESULT+2
         adc     ARG+3
         sta     RESULT+2
@@ -577,56 +402,11 @@ L38A7:
         adc     ARG+1
         sta     RESULT
 L38C3:
-.ifndef CONFIG_ROR_WORKAROUND
         ror     RESULT
         ror     RESULT+1
-.ifdef APPLE_BAD_BYTE
-; this seems to be a bad byte in the dump
-		.byte	RESULT+2,RESULT+2 ; XXX BUG!
-.else
         ror     RESULT+2
-.endif
-.ifndef CONFIG_SMALL
         ror     RESULT+3
-.endif
         ror     FACEXTENSION
-.else
-        lda     #$00
-        bcc     L38C9
-        lda     #$80
-L38C9:
-        lsr     RESULT
-        ora     RESULT
-        sta     RESULT
-        lda     #$00
-        bcc     L38D5
-        lda     #$80
-L38D5:
-        lsr     RESULT+1
-        ora     RESULT+1
-        sta     RESULT+1
-        lda     #$00
-        bcc     L38E1
-        lda     #$80
-L38E1:
-        lsr     RESULT+2
-        ora     RESULT+2
-        sta     RESULT+2
-        lda     #$00
-        bcc     L38ED
-        lda     #$80
-L38ED:
-        lsr     RESULT+3
-        ora     RESULT+3
-        sta     RESULT+3
-        lda     #$00
-        bcc     L38F9
-        lda     #$80
-L38F9:
-        lsr     FACEXTENSION
-        ora     FACEXTENSION
-        sta     FACEXTENSION
-.endif
         tya
         lsr     a
         bne     L38A7
@@ -640,11 +420,9 @@ LOAD_ARG_FROM_YA:
         sta     INDEX
         sty     INDEX+1
         ldy     #BYTES_FP-1
-.ifndef CONFIG_SMALL
         lda     (INDEX),y
         sta     ARG+4
         dey
-.endif
         lda     (INDEX),y
         sta     ARG+3
         dey
@@ -732,11 +510,7 @@ L3970:
 
 ; ----------------------------------------------------------------------------
 CONTEN:
-.ifdef CONFIG_SMALL
-        .byte   $84,$20,$00,$00
-.else
         .byte   $84,$20,$00,$00,$00
-.endif
 
 ; ----------------------------------------------------------------------------
 ; DIVIDE FAC BY 10
@@ -785,11 +559,9 @@ L39A1:
         bne     L39B7
         ldy     ARG+3
         cpy     FAC+3
-.ifndef CONFIG_SMALL
         bne     L39B7
         ldy     ARG+4
         cpy     FAC+4
-.endif
 L39B7:
         php
         rol     a
@@ -804,9 +576,7 @@ L39C4:
         bcs     L39D5
 L39C7:
         asl     ARG_LAST
-.ifndef CONFIG_SMALL
         rol     ARG+3
-.endif
         rol     ARG+2
         rol     ARG+1
         bcs     L39B7
@@ -814,11 +584,9 @@ L39C7:
         bpl     L39B7
 L39D5:
         tay
-.ifndef CONFIG_SMALL
         lda     ARG+4
         sbc     FAC+4
         sta     ARG+4
-.endif
         lda     ARG+3
         sbc     FAC+3
         sta     ARG+3
@@ -857,10 +625,8 @@ COPY_RESULT_INTO_FAC:
         sta     FAC+2
         lda     RESULT+2
         sta     FAC+3
-.ifndef CONFIG_SMALL
         lda     RESULT+3
         sta     FAC+4
-.endif
         jmp     NORMALIZE_FAC2
 
 ; ----------------------------------------------------------------------------
@@ -870,11 +636,9 @@ LOAD_FAC_FROM_YA:
         sta     INDEX
         sty     INDEX+1
         ldy     #MANTISSA_BYTES
-.ifndef CONFIG_SMALL
         lda     (INDEX),y
         sta     FAC+4
         dey
-.endif
         lda     (INDEX),y
         sta     FAC+3
         dey
@@ -921,11 +685,9 @@ STORE_FAC_AT_YX_ROUNDED:
         stx     INDEX
         sty     INDEX+1
         ldy     #MANTISSA_BYTES
-.ifndef CONFIG_SMALL
         lda     FAC+4
         sta     (INDEX),y
         dey
-.endif
         lda     FAC+3
         sta     (INDEX),y
         dey
@@ -1043,9 +805,7 @@ FLOAT1:
 ; ----------------------------------------------------------------------------
 FLOAT2:
         lda     #$00
-.ifndef CONFIG_SMALL
         sta     FAC+4
-.endif
         sta     FAC+3
 LDB21:
         stx     FAC
@@ -1092,12 +852,10 @@ FCOMP2:
         cmp     FAC+2
         bne     L3B0A
         iny
-.ifndef CONFIG_SMALL
         lda     (DEST),y
         cmp     FAC+3
         bne     L3B0A
         iny
-.endif
         lda     #$7F
         cmp     FACEXTENSION
         lda     (DEST),y
@@ -1175,9 +933,7 @@ QINT3:
         sta     FAC+1
         sta     FAC+2
         sta     FAC+3
-.ifndef CONFIG_SMALL
         sta     FAC+4
-.endif
         tay
 RTS17:
         rts
@@ -1197,12 +953,6 @@ L3B6F:
         dex
         bpl     L3B6F
         bcc     FIN2
-.ifdef SYM1
-        cmp     #$26
-        bne     LDABB
-        jmp     LCDFE
-LDABB:
-.endif
         cmp     #$2D
         bne     L3B7E
         stx     SERLEN
@@ -1231,17 +981,7 @@ FIN3:
         beq     FIN4
         bne     FIN6
 L3BA6:
-.ifndef CONFIG_ROR_WORKAROUND
         ror     EXPSGN
-.else
-        lda     #$00
-        bcc     L3BAC
-        lda     #$80
-L3BAC:
-        lsr     EXPSGN
-        ora     EXPSGN
-        sta     EXPSGN
-.endif
 FIN4:
         jsr     CHRGET
 FIN5:
@@ -1258,17 +998,7 @@ FIN6:
 ; FOUND A DECIMAL POINT
 ; ----------------------------------------------------------------------------
 FIN10:
-.ifndef CONFIG_ROR_WORKAROUND
         ror     LOWTR
-.else
-        lda     #$00
-        bcc     L3BC9
-        lda     #$80
-L3BC9:
-        lsr     LOWTR
-        ora     LOWTR
-        sta     LOWTR
-.endif
         bit     LOWTR
         bvc     FIN1
 
@@ -1334,22 +1064,12 @@ ADDACC:
 ; ----------------------------------------------------------------------------
 GETEXP:
         lda     EXPON
-        cmp     #MAX_EXPON
+        cmp     #10 ; MAX_EXPON
         bcc     L3C2C
-.ifdef CONFIG_10A
         lda     #$64
-.endif
         bit     EXPSGN
-.ifdef CONFIG_10A
         bmi     L3C3A
-.else
-        bmi     LDC70
-.endif
         jmp     OVERFLOW
-LDC70:
-.ifndef CONFIG_10A
-        lda     #$0B
-.endif
 L3C2C:
         asl     a
         asl     a
@@ -1366,40 +1086,20 @@ L3C3A:
         jmp     FIN4
 
 ; ----------------------------------------------------------------------------
-.ifdef CONFIG_SMALL
-; these values are /1000 of what the labels say
-CON_99999999_9:
-        .byte   $91,$43,$4F,$F8
-CON_999999999:
-		.byte   $94,$74,$23,$F7
-CON_BILLION:
-        .byte   $94,$74,$24,$00
-.else
 CON_99999999_9:
         .byte   $9B,$3E,$BC,$1F,$FD
 CON_999999999:
-.ifndef CONFIG_10A
-        .byte   $9E,$6E,$6B,$27,$FE
-.else
         .byte   $9E,$6E,$6B,$27,$FD
-.endif
 CON_BILLION:
         .byte   $9E,$6E,$6B,$28,$00
-.endif
 
 ; ----------------------------------------------------------------------------
 ; PRINT "IN <LINE #>"
 ; ----------------------------------------------------------------------------
 INPRT:
-.ifdef KBD
-        jsr     LFE0B
-        .byte	" in"
-        .byte	0
-.else
         lda     #<QT_IN
         ldy     #>QT_IN
         jsr     GOSTROUT2
-.endif
         lda     CURLIN+1
         ldx     CURLIN
 
@@ -1417,7 +1117,7 @@ GOSTROUT2:
         jmp     STROUT
 
 ; ----------------------------------------------------------------------------
-; CONVERT (FAC) TO STRING STARTING AT STACK
+; CONVERT (FAC) TO STRING STARTING AT FOUTBUF+1
 ; RETURN WITH (Y,A) POINTING AT STRING
 ; ----------------------------------------------------------------------------
 FOUT:
@@ -1425,7 +1125,7 @@ FOUT:
 
 ; ----------------------------------------------------------------------------
 ; "STR$" FUNCTION ENTERS HERE, WITH (Y)=0
-; SO THAT RESULT STRING STARTS AT STACK-1
+; SO THAT RESULT STRING STARTS AT FOUTBUF
 ; (THIS IS USED AS A FLAG)
 ; ----------------------------------------------------------------------------
 FOUT1:
@@ -1434,7 +1134,7 @@ FOUT1:
         bpl     L3C73
         lda     #$2D
 L3C73:
-        sta     STACK2-1,y
+        sta     __FOUTBUF_START__,y
         sta     FACSIGN
         sty     STRNG2
         iny
@@ -1451,11 +1151,7 @@ L3C8C:
         lda     #<CON_BILLION
         ldy     #>CON_BILLION
         jsr     FMULT
-.ifdef CONFIG_SMALL
-        lda     #<-6 ; exponent adjustment
-.else
         lda     #<-9
-.endif
 L3C95:
         sta     INDX
 ; ----------------------------------------------------------------------------
@@ -1515,12 +1211,12 @@ L3CDF:
         ldy     STRNG2
         lda     #$2E
         iny
-        sta     STACK2-1,y
+        sta     __FOUTBUF_START__,y
         txa
         beq     L3CF0
         lda     #$30
         iny
-        sta     STACK2-1,y
+        sta     __FOUTBUF_START__,y
 L3CF0:
         sty     STRNG2
 ; ----------------------------------------------------------------------------
@@ -1533,11 +1229,9 @@ LDD3A:
 L3CF6:
         lda     FAC_LAST
         clc
-.ifndef CONFIG_SMALL
         adc     DECTBL+3,y
         sta     FAC+4
         lda     FAC+3
-.endif
         adc     DECTBL+2,y
         sta     FAC+3
         lda     FAC+2
@@ -1562,20 +1256,18 @@ L3D23:
         iny
         iny
         iny
-.ifndef CONFIG_SMALL
         iny
-.endif
         sty     VARPNT
         ldy     STRNG2
         iny
         tax
         and     #$7F
-        sta     STACK2-1,y
+        sta     __FOUTBUF_START__,y
         dec     INDX
         bne     L3D3E
         lda     #$2E
         iny
-        sta     STACK2-1,y
+        sta     __FOUTBUF_START__,y
 L3D3E:
         sty     STRNG2
         ldy     VARPNT
@@ -1584,10 +1276,6 @@ L3D3E:
         and     #$80
         tax
         cpy     #DECTBL_END-DECTBL
-.ifdef CONFIG_CBM_ALL
-        beq     LDD96
-        cpy     #$3C ; XXX
-.endif
         bne     L3CF6
 ; ----------------------------------------------------------------------------
 ; NINE DIGITS HAVE BEEN STORED IN STRING.  NOW LOOK
@@ -1597,7 +1285,7 @@ L3D3E:
 LDD96:
         ldy     STRNG2
 L3D4E:
-        lda     STACK2-1,y
+        lda     __FOUTBUF_START__,y
         dey
         cmp     #$30
         beq     L3D4E
@@ -1615,9 +1303,9 @@ L3D5B:
         tax
         lda     #$2D
 L3D6B:
-        sta     STACK2+1,y
+        sta     __FOUTBUF_START__+2,y
         lda     #$45
-        sta     STACK2,y
+        sta     __FOUTBUF_START__+1,y
         txa
         ldx     #$2F
         sec
@@ -1626,65 +1314,42 @@ L3D77:
         sbc     #$0A
         bcs     L3D77
         adc     #$3A
-        sta     STACK2+3,y
+        sta     __FOUTBUF_START__+4,y
         txa
-        sta     STACK2+2,y
+        sta     __FOUTBUF_START__+3,y
         lda     #$00
-        sta     STACK2+4,y
+        sta     __FOUTBUF_START__+5,y
         beq     L3D94
 FOUT4:
-        sta     STACK2-1,y
+        sta     __FOUTBUF_START__,y
 L3D8F:
         lda     #$00
-        sta     STACK2,y
+        sta     __FOUTBUF_START__+1,y
 L3D94:
-        lda     #<STACK2
-        ldy     #>STACK2
+        lda     #<(__FOUTBUF_START__+1)
+        ldy     #>(__FOUTBUF_START__+1)
         rts
 
 ; ----------------------------------------------------------------------------
 CON_HALF:
-.ifdef CONFIG_SMALL
-        .byte   $80,$00,$00,$00
-.else
         .byte   $80,$00,$00,$00,$00
-.endif
 
 ; ----------------------------------------------------------------------------
 ; POWERS OF 10 FROM 1E8 DOWN TO 1,
 ; AS 32-BIT INTEGERS, WITH ALTERNATING SIGNS
 ; ----------------------------------------------------------------------------
 DECTBL:
-.ifdef CONFIG_SMALL
-        .byte   $FE,$79,$60 ; -100000
-		.byte	$00,$27,$10 ; 10000
-		.byte	$FF,$FC,$18 ; -1000
-		.byte	$00,$00,$64 ; 100
-		.byte	$FF,$FF,$F6 ; -10
-		.byte	$00,$00,$01 ; 1
-.else
-		.byte	$FA,$0A,$1F,$00	; -100000000
-		.byte	$00,$98,$96,$80	; 10000000
-		.byte	$FF,$F0,$BD,$C0	; -1000000
-		.byte	$00,$01,$86,$A0	; 100000
-		.byte	$FF,$FF,$D8,$F0	; -10000
-		.byte   $00,$00,$03,$E8	; 1000
-		.byte	$FF,$FF,$FF,$9C	; -100
-		.byte   $00,$00,$00,$0A	; 10
-		.byte	$FF,$FF,$FF,$FF	; -1
-.endif
+        .byte    $FA,$0A,$1F,$00    ; -100000000
+        .byte    $00,$98,$96,$80    ; 10000000
+        .byte    $FF,$F0,$BD,$C0    ; -1000000
+        .byte    $00,$01,$86,$A0    ; 100000
+        .byte    $FF,$FF,$D8,$F0    ; -10000
+        .byte    $00,$00,$03,$E8    ; 1000
+        .byte    $FF,$FF,$FF,$9C    ; -100
+        .byte    $00,$00,$00,$0A    ; 10
+        .byte    $FF,$FF,$FF,$FF    ; -1
 DECTBL_END:
-.ifdef CONFIG_CBM_ALL
-		.byte	$FF,$DF,$0A,$80 ; TI$
-		.byte	$00,$03,$4B,$C0
-		.byte	$FF,$FF,$73,$60
-		.byte	$00,$00,$0E,$10
-		.byte	$FF,$FF,$FD,$A8
-		.byte	$00,$00,$00,$3C
-.endif
-.ifdef CONFIG_2
 C_ZERO = CON_HALF + 2
-.endif
 
 ; ----------------------------------------------------------------------------
 ; "SQR" FUNCTION
@@ -1744,32 +1409,18 @@ L3E0F:
         rts
 
 ; ----------------------------------------------------------------------------
-.ifdef CONFIG_SMALL
-CON_LOG_E:
-        .byte   $81,$38,$AA,$3B
-POLY_EXP:
-		.byte	$06
-		.byte	$74,$63,$90,$8C
-		.byte	$77,$23,$0C,$AB
-		.byte	$7A,$1E,$94,$00
-		.byte	$7C,$63,$42,$80
-		.byte	$7E,$75,$FE,$D0
-		.byte	$80,$31,$72,$15
-		.byte	$81,$00,$00,$00
-.else
 CON_LOG_E:
         .byte   $81,$38,$AA,$3B,$29
 POLY_EXP:
         .byte   $07
-		.byte	$71,$34,$58,$3E,$56
-		.byte	$74,$16,$7E,$B3,$1B
-		.byte	$77,$2F,$EE,$E3,$85
+        .byte   $71,$34,$58,$3E,$56
+        .byte   $74,$16,$7E,$B3,$1B
+        .byte   $77,$2F,$EE,$E3,$85
         .byte   $7A,$1D,$84,$1C,$2A
-		.byte	$7C,$63,$59,$58,$0A
-		.byte	$7E,$75,$FD,$E7,$C6
-		.byte	$80,$31,$72,$18,$10
-		.byte	$81,$00,$00,$00,$00
-.endif
+        .byte   $7C,$63,$59,$58,$0A
+        .byte   $7E,$75,$FD,$E7,$C6
+        .byte   $80,$31,$72,$18,$10
+        .byte   $81,$00,$00,$00,$00
 
 ; ----------------------------------------------------------------------------
 ; "EXP" FUNCTION
@@ -1828,9 +1479,9 @@ L3E6C:
 ; F(X) = X * P(X^2)
 ;
 ; WHERE:  X IS VALUE IN FAC
-;	Y,A POINTS AT COEFFICIENT TABLE
-;	FIRST BYTE OF COEFF. TABLE IS N
-;	COEFFICIENTS FOLLOW, HIGHEST POWER FIRST
+;    Y,A POINTS AT COEFFICIENT TABLE
+;    FIRST BYTE OF COEFF. TABLE IS N
+;    COEFFICIENTS FOLLOW, HIGHEST POWER FIRST
 ;
 ; P(X^2) COMPUTED USING NORMAL POLYNOMIAL SUBROUTINE
 ; ----------------------------------------------------------------------------
@@ -1851,9 +1502,9 @@ POLYNOMIAL_ODD:
 ; P(X) = C(0)*X^N + C(1)*X^(N-1) + ... + C(N)
 ;
 ; WHERE:  X IS VALUE IN FAC
-;	Y,A POINTS AT COEFFICIENT TABLE
-;	FIRST BYTE OF COEFF. TABLE IS N
-;	COEFFICIENTS FOLLOW, HIGHEST POWER FIRST
+;    Y,A POINTS AT COEFFICIENT TABLE
+;    FIRST BYTE OF COEFF. TABLE IS N
+;    COEFFICIENTS FOLLOW, HIGHEST POWER FIRST
 ; ----------------------------------------------------------------------------
 POLYNOMIAL:
         sta     STRNG2

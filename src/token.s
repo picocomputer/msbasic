@@ -1,21 +1,3 @@
-; Picocomputer keyword and operator tables. Replaces upstream
-; src/msbasic/token.s.
-;
-; Modern keyword set:
-; - INPUT#/SYS/OPEN/CLOSE tokenize but dispatch to rp6502_rts_stub
-;   (reserved names, no-op for now — future file support will fill
-;   them in). PRINT#/GET#/CMD have real handlers in misc1.s/input.s,
-;   but those reach into CHKIN/CHKOUT/CLRCH which are also stubs, so
-;   they're effectively no-ops too until file I/O is wired.
-; - No VERIFY (Commodore CBM_ALL).
-; - No PLT/TEX/PLOD/PSAV/VLOD/VSAV/SLOD/PRT (Apple/KBD).
-; - No NULL (CONFIG_NULL — hardcopy-terminal padding).
-; - No USR (no user-defined-machine-code-call vector — irrelevant on RP6502).
-; - "CLEAR" instead of "CLR".
-; - Same general layout/order so token numbers align with upstream where
-;   meaningful (TOKEN_PRINT, TOKEN_GOTO, etc.). CAPS is our addition,
-;   placed last so it doesn't perturb upstream-compatible token numbers.
-
         init_token_tables
 
         keyword_rts "END", END
@@ -47,7 +29,6 @@
         keyword_rts "LIST", LIST
         keyword_rts "CLEAR", CLEAR
         keyword_rts "CMD", CMD
-        keyword_rts "SYS", SYS
         keyword_rts "OPEN", OPEN
         keyword_rts "CLOSE", CLOSE
         keyword_rts "GET", GET
@@ -102,8 +83,19 @@ UNFNC:
 
         keyword "GO", TOKEN_GO
 
-        .segment "KEYWORDS"
+        .segment "KEYWORDS_A"
+TOKEN_NAME_TABLE_A_END:
         .byte 0
+        .assert (TOKEN_NAME_TABLE_A_END - TOKEN_NAME_TABLE_A) < $100, error, "KEYWORDS_A byte overflow"
+        .segment "DUMMY_A"
+        .assert (* - DUMMY_A_START) <= 64, error, "KEYWORDS_A keyword count > 64"
+
+        .segment "KEYWORDS_B"
+TOKEN_NAME_TABLE_B_END:
+        .byte 0
+        .assert (TOKEN_NAME_TABLE_B_END - TOKEN_NAME_TABLE_B) < $100, error, "KEYWORDS_B byte overflow"
+        .segment "DUMMY_B"
+        .assert (* - DUMMY_B_START) <= 64, error, "KEYWORDS_B keyword count > 64"
 
 ; ============================================================
 ; Math operator dispatch table (used by FRMEVL).

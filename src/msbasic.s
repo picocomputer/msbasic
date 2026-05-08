@@ -1,20 +1,17 @@
-; Picocomputer 6502 BASIC top-level. Mirrors upstream src/msbasic/msbasic.s.
-;
-; Each .include "<file>.s" resolves to src/<file>.s first (the current-
-; file-directory search precedes --asm-include-dir), so any file we
-; shadow under src/ wins; the rest fall through to src/msbasic/<file>.s.
-
 .debuginfo +
 .macpack longbranch
 
+; --- cc65 library includes ---
 .include "rp6502.inc"
 .include "fcntl.inc"
 
+; --- our application code ---
 .include "defines.s"
 .include "macros.s"
+.include "chrget.s"
 .include "zeropage.s"
-
 .include "header.s"
+.include "extra.s"
 .include "token.s"
 .include "error.s"
 .include "message.s"
@@ -22,6 +19,7 @@
 .include "program.s"
 .include "flow1.s"
 .include "loadsave.s"
+.include "file.s"
 .include "flow2.s"
 .include "misc1.s"
 .include "print.s"
@@ -31,12 +29,9 @@
 .include "array.s"
 .include "misc2.s"
 .include "string.s"
-.include "misc3.s"
 .include "poke.s"
 .include "float.s"
-.include "chrget.s"
 .include "rnd.s"
 .include "trig.s"
 .include "init.s"
-.include "extra.s"
 .include "caps.s"

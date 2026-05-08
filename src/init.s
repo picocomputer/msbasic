@@ -1,15 +1,13 @@
-.import __BASRAM_START__, __BASRAM_SIZE__, __CHRGET_SIZE__
-
 .segment "INIT"
 
 COLD_START:
-        ; Copy the GENERIC_CHRGET routine into ZP.
-        ldx #<__CHRGET_SIZE__
-@chrget_copy:
-        lda GENERIC_CHRGET-1, x
-        sta CHRGET-1, x
-        dex
-        bne @chrget_copy
+        ; First-boot prologue. Reset vector points here on cold load
+        ; (CMake RESET 0x1000); HEADER's warm shim does the same setup
+        ; on every subsequent reset after we rewrite $FFFC below.
+        ldx #STACK_TOP
+        txs
+        cld
+        jsr ria_init_io
 
         ; Seed RNDSEED with 31 bits of OS entropy. RNDSEED is 5 bytes
         ; of FP: exponent + 4-byte mantissa. Set exponent $80 for a
@@ -20,13 +18,12 @@ COLD_START:
         ; bytes carry random bits with no sign-position constraint.
         lda #$80
         sta RNDSEED
-        jsr rp6502_lrand
+        lda #RIA_ATTR_LRAND
+        jsr ria_attr_get
+        sta RNDSEED+2
+        stx RNDSEED+3
         lda RIA_SREG+1
         sta RNDSEED+1
-        lda RIA_A
-        sta RNDSEED+2
-        lda RIA_X
-        sta RNDSEED+3
         lda RIA_SREG
         sta RNDSEED+4
 
@@ -46,7 +43,8 @@ COLD_START:
 
         stz SHIFTSIGNEXT
         stz LASTPT+1
-        stz CURDVC
+        lda #$FF              ; "no I/O redirect" sentinel; CMD/INPUT#/
+        sta CURDVC            ; GET# overwrite with lfn 0..7
         stz Z14
         stz POSX
         stz lsav_fd
@@ -55,40 +53,25 @@ COLD_START:
         ldx #TEMPST
         stx TEMPPT
 
-        ; Program area: byte at __BASRAM_START__ is the synthetic
-        ; "previous-line terminator" NEWSTT reads on first iteration;
-        ; TXTTAB points one past it.
-        lda #<__BASRAM_START__
-        ldy #>__BASRAM_START__
-        sta TXTTAB
-        sty TXTTAB+1
-        ldy #$00
-        tya
-        sta (TXTTAB),y
-        inc TXTTAB
+        stz __TXTTAB_START__  ;synthetic "previous-line terminator"
+        jsr SCRTCH            ; falls through to CLEARC, which sets FRETOP
 
-        lda #<(__BASRAM_START__ + __BASRAM_SIZE__)
-        sta MEMSIZ
-        sta FRETOP
-        lda #>(__BASRAM_START__ + __BASRAM_SIZE__)
-        sta MEMSIZ+1
-        sta FRETOP+1
+        ; ZP and program-memory pointers are now valid, so HEADER's
+        ; warm shim can take over. Hand future hardware resets to it.
+        lda #<WARM_START
+        sta $FFFC
+        lda #>WARM_START
+        sta $FFFD
 
-        jsr SCRTCH
-
-        lda #<rp6502_qt_banner
-        ldy #>rp6502_qt_banner
+        lda #<QT_BANNER
+        ldy #>QT_BANNER
         jsr STROUT
 
-        lda MEMSIZ
-        sec
-        sbc TXTTAB
-        tax
-        lda MEMSIZ+1
-        sbc TXTTAB+1
-        jsr rp6502_linprt
-        lda #<rp6502_qt_bytes_free
-        ldy #>rp6502_qt_bytes_free
+        ldx #<(__TXTTAB_SIZE__ - 3)
+        lda #>(__TXTTAB_SIZE__ - 3)
+        jsr LINPRTNS
+        lda #<QT_BYTES_FREE
+        ldy #>QT_BYTES_FREE
         jsr STROUT
 
         ; Pull argv into INPUTBUFFER for parsing. The OS argv blob
@@ -104,11 +87,10 @@ COLD_START:
         ldy #$00
 @argv_pop:
         lda RIA_XSTACK
-        sta INPUTBUFFER,y
+        sta __INBUF_START__,y
         iny
         bne @argv_pop
-        lda #RIA_OP_ZXSTACK
-        sta RIA_OP
+        ria_zxstack
 
         ; Walk argv[1..]: each -c[0-2] updates the caps mode (last
         ; one wins); the first non-flag argument is remembered as
@@ -118,10 +100,10 @@ COLD_START:
         stz DEST+1
         ldy #$02                  ; Y walks the offset table at INPUTBUFFER
 @argv_loop:
-        lda INPUTBUFFER,y
+        lda __INBUF_START__,y
         sta INDEX
         iny
-        lda INPUTBUFFER,y
+        lda __INBUF_START__,y
         sta INDEX+1
         iny
         ; null entry → end of table
@@ -131,10 +113,10 @@ COLD_START:
         ; offset → absolute pointer
         clc
         lda INDEX
-        adc #<INPUTBUFFER
+        adc #<__INBUF_START__
         sta INDEX
         lda INDEX+1
-        adc #>INPUTBUFFER
+        adc #>__INBUF_START__
         sta INDEX+1
 
         phy                       ; save loop Y across the (INDEX),y reads
@@ -168,8 +150,8 @@ COLD_START:
         bra @argv_loop
 
 @argv_done:
-        ; Apply caps mode (default or -c<n>); rln_caps_set takes X.
-        jsr rln_caps_set
+        ; Apply caps mode (default or -c<n>); ria_caps_set takes X.
+        jsr ria_caps_set
 
         ; If a filename was found, push it and auto-load.
         lda DEST+1
@@ -198,12 +180,8 @@ COLD_START:
         bne @argv_push
 
         lda #O_RDONLY
-        sta RIA_A
-        lda #RIA_OP_OPEN
-        sta RIA_OP
-        jsr RIA_SPIN
-        cpx #$FF
-        beq @argv_open_failed     ; same path as a typed LOAD failure
+        jsr ria_open
+        bcs @argv_open_failed     ; same path as a typed LOAD failure
         sta lsav_fd
         stz TEMP1                 ; lsav_load_chrin's per-line byte
                                   ; counter; must start at 0 (see
@@ -224,7 +202,8 @@ COLD_START:
 @argv_open_failed:
         jmp lsav_err_baddata      ; "?FILE DATA ERROR" then OK
 
-rp6502_qt_banner:
-        .byte "MICROSOFT BASIC", CR, LF, 0
-rp6502_qt_bytes_free:
-        .byte " BYTES FREE", CR, LF, 0
+QT_BANNER:
+        .byte   "MICROSOFT BASIC", CR, LF, 0
+
+QT_BYTES_FREE:
+        .byte   " BYTES FREE", CR, LF, 0

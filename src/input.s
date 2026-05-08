@@ -1,29 +1,15 @@
-; Picocomputer INPUT/GET/READ. Replaces upstream src/msbasic/input.s.
+; Upstream collapsed Ctrl-C and blank Enter into a single silent
+; `clc; jmp CONTROL_C_TYPED` because most variants can't distinguish
+; the two at the I/O layer. The RIA's SIGINT sidechannel can: INLIN
+; returns A=$03 from CHRIN's @sigint for Ctrl-C, which we
+; route through CONTROL_C_TYPED with C=1 so PRINT_ERROR_LINNUM
+; prints "?BREAK IN <line>" before RESTART.
 ;
 ; Behavior change: a blank Enter at the INPUT prompt no longer silently
 ; breaks the program back to OK. For a numeric variable it prints
 ; "?REDO FROM START" and re-runs the INPUT statement (same as a
 ; malformed numeric response); for a string variable it assigns ""
-; and continues. Empty-as-0 isn't a MS BASIC spec — it was just what
-; FIN did with an empty buffer, which papered over user typos.
-;
-; Upstream collapsed Ctrl-C and blank Enter into a single silent
-; `clc; jmp CONTROL_C_TYPED` because most variants can't distinguish
-; the two at the I/O layer. The RIA's SIGINT sidechannel can: INLIN
-; returns A=$03 from rp6502_inlin's @sigint for Ctrl-C, which we
-; route through CONTROL_C_TYPED with C=1 so PRINT_ERROR_LINNUM
-; prints "?BREAK IN <line>" before RESTART.
-;
-; Strips dead .ifdef branches: KBD, APPLE, SYM1, AIM65, MICROTAN,
-; CBM1, CBM1_PATCHES, CONFIG_SMALL, CONFIG_CBM_ALL, CONFIG_IO_MSB.
-; Collapses always-on conditionals: CONFIG_2/11/11A/10A,
-; CONFIG_NO_READ_Y_IS_ZERO_HACK, CONFIG_NO_INPUTBUFFER_ZP.
-; CONFIG_FILE branches stay (CHKIN/CLRCH route to rp6502_rts_stub
-; today, harmless).
-;
-; INPUT# (INPUTH) is dropped — the keyword is no longer in our
-; tokenizer. LCAD6/LCAD8 survive as a tiny standalone helper because
-; misc1.s and GET still reach into them.
+; and continues.
 
 .segment "CODE"
 
@@ -49,7 +35,7 @@ SYNERR4:
 
 RESPERR:
         lda     CURDVC
-        beq     LCA8F
+        bmi     LCA8F             ; $FF = no redirect → reprompt
         ldx     #ERR_BADDATA
         jmp     ERROR
 LCA8F:
@@ -63,16 +49,19 @@ LCA8F:
         rts
 
 ; ----------------------------------------------------------------------------
-; CHKIN/CHKOUT cleanup helper: close any redirected I/O and zero CURDVC.
+; CHKIN/CHKOUT cleanup helper: close any redirected I/O and reset CURDVC
+; to $FF (the "no redirect" sentinel; lfn 0 is a valid file slot, so 0
+; can't double as "no redirect").
 ; LCAD6 entry: also reload A from CURDVC (for callers that branch on it).
 ; LCAD8 entry: skip the load (CURDVC already in A or X).
-; Referenced from misc1.s (jmp LCAD6) and from GET below (bne LCAD8).
+; Referenced from misc1.s (jmp LCAD6) and from GET below (bpl LCAD8).
 ; ----------------------------------------------------------------------------
 LCAD6:
         lda     CURDVC
 LCAD8:
         jsr     CLRCH
-        stz     CURDVC
+        lda     #$FF
+        sta     CURDVC
         rts
 
 ; ----------------------------------------------------------------------------
@@ -89,13 +78,13 @@ GET:
         jsr     CHKIN
         stx     CURDVC
 LCAB6:
-        ldx     #<(INPUTBUFFER+1)
-        ldy     #>(INPUTBUFFER+1)
-        stz     INPUTBUFFER+1
+        ldx     #<(__INBUF_START__+1)
+        ldy     #>(__INBUF_START__+1)
+        stz     __INBUF_START__+1
         lda     #$40
         jsr     PROCESS_INPUT_LIST
         ldx     CURDVC              ; GET# — restore default fd
-        bne     LCAD8
+        bpl     LCAD8               ; $FF (no redirect) → just rts
         rts
 
 ; ----------------------------------------------------------------------------
@@ -112,34 +101,33 @@ INPUT:
 L2A9E:
         jsr     ERRDIR
         lda     #$2C
-        sta     INPUTBUFFER-1
+        sta     __INBUF1_START__
 LCAF8:
         jsr     NXIN
-        ; INLIN signals cancel via A=$03 (rp6502_inlin's @sigint).
+        ; INLIN signals cancel via A=$03 (CHRIN's @sigint).
         ; Check before any other lda clobbers A. Bail through
         ; upstream's CONTROL_C_TYPED with C=1 so L2701's `bcc L270E`
         ; falls through to PRINT_ERROR_LINNUM — prints "?BREAK IN
         ; <line>" before landing at RESTART. The whole INLIN→NXIN
         ; chain has already RTS'd back here, so END4's pla;pla just
-        ; pops the EXECUTE_STATEMENT frame; SP stays well above
-        ; FOUT's $0100+ scratch.
+        ; pops the EXECUTE_STATEMENT frame.
         cmp     #$03
         bne     @no_cancel
         sec
         jmp     CONTROL_C_TYPED
 @no_cancel:
         lda     CURDVC
-        beq     LCB0C
+        bmi     LCB0C               ; $FF = no redirect
         lda     Z96
         and     #$02
         beq     LCB0C
         jsr     LCAD6
         jmp     DATA
 LCB0C:
-        lda     INPUTBUFFER
+        lda     __INBUF_START__
         bne     L2ABE
         lda     CURDVC
-        bne     LCAF8
+        bpl     LCAF8               ; redirected: retry input
         ; Empty buffer: don't short-circuit here — VALTYP isn't set
         ; yet. Fall into PROCESS_INPUT_LIST so PTRGET picks the
         ; numeric vs string path; L2B34 handles ?REDO for numeric,
@@ -148,7 +136,7 @@ LCB0C:
 
 NXIN:
         lda     CURDVC
-        bne     LCB21
+        bpl     LCB21               ; redirected: skip the '? ' prompt
         jsr     OUTQUES             ; '?'
         jsr     OUTSP
 LCB21:
@@ -190,15 +178,15 @@ PROCESS_INPUT_ITEM:
         bne     INSTART
         bit     INPUTFLG
         bvc     L2AF0               ; not GET → reprompt path
-        jsr     MONRDKEY            ; GET: pull one key
-        sta     INPUTBUFFER
-        ldx     #<(INPUTBUFFER-1)
-        ldy     #>(INPUTBUFFER-1)
+        jsr     GETIN            ; GET: pull one key
+        sta     __INBUF_START__
+        ldx     #<(__INBUF_START__-1)
+        ldy     #>(__INBUF_START__-1)
         bra     L2AF8
 L2AF0:
         jmi     FINDATA             ; READ
         lda     CURDVC
-        bne     LCB64
+        bpl     LCB64               ; redirected: skip '?' reprompt
         jsr     OUTQUES             ; '?' reprompt for next INPUT var
 LCB64:
         jsr     NXIN
@@ -315,7 +303,7 @@ L2B94:
         lda     (INPTR)             ; 65C02 zp-indirect
         beq     L2BA1
         lda     CURDVC
-        bne     L2BA1
+        bpl     L2BA1               ; redirected: suppress "?EXTRA IGNORED"
         lda     #<ERREXTRA
         ldy     #>ERREXTRA
         jmp     STROUT
