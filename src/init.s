@@ -191,3 +191,9 @@ COLD_START:
         jmp RESTART
 @argv_open_failed:
         jmp lsav_err_baddata      ; "?FILE DATA ERROR" then OK
+
+QT_BANNER:
+        .byte   "MICROSOFT BASIC", CR, LF, 0
+
+QT_BYTES_FREE:
+        .byte   " BYTES FREE", CR, LF, 0

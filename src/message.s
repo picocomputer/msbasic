@@ -1,11 +1,5 @@
 .segment "CODE"
 
-QT_BANNER:
-        .byte   "MICROSOFT BASIC", CR, LF, 0
-
-QT_BYTES_FREE:
-        .byte   " BYTES FREE", CR, LF, 0
-
 QT_ERROR:
         .byte   " ERROR", 0
 
