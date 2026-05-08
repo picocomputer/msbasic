@@ -15,10 +15,12 @@ target_sources(basic PRIVATE
     src/msbasic.s
 )
 rp6502_byproducts(basic
-    ${CMAKE_CURRENT_BINARY_DIR}/basic.0
-    ${CMAKE_CURRENT_BINARY_DIR}/basic.1
+    ${CMAKE_CURRENT_BINARY_DIR}/basic.00E8
+    ${CMAKE_CURRENT_BINARY_DIR}/basic.1000
+    ${CMAKE_CURRENT_BINARY_DIR}/basic.C000
 )
 rp6502_asset(basic help src/help.txt)
-rp6502_asset(basic 0x00E8 ${CMAKE_CURRENT_BINARY_DIR}/basic.0)
-rp6502_asset(basic 0xC000 ${CMAKE_CURRENT_BINARY_DIR}/basic.1)
+rp6502_asset(basic 0x00E8 ${CMAKE_CURRENT_BINARY_DIR}/basic.00E8)
+rp6502_asset(basic 0x1000 ${CMAKE_CURRENT_BINARY_DIR}/basic.1000)
+rp6502_asset(basic 0xC000 ${CMAKE_CURRENT_BINARY_DIR}/basic.C000)
 rp6502_executable(basic DATA 0x1000 RESET 0x1000)
