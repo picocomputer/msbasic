@@ -1,24 +1,24 @@
 .segment "EXTRA"
 
 ;---------------------------------------------
-; rp6502_zxstack — synchronous xstack drain.
+; ria_zxstack — synchronous xstack drain.
 ; RIA_OP_ZXSTACK is $00 and the op fires on the write to RIA_OP
 ; with no SPIN, so this is a single 65C02 stz. Macro keeps the
 ; intent named at every call site without paying the jsr/rts
 ; cost a real subroutine would.
-.macro rp6502_zxstack
+.macro ria_zxstack
         stz     RIA_OP
 .endmacro
 
 ; ------------------------------------------------------------
-; rp6502_open
+; ria_open
 ;   In:  A = O_* flags. Filename bytes already pushed to RIA_XSTACK
 ;        in reverse order; trailing 0 short-stacks for free.
 ;   Out: A/X = SPIN return (kernel fd / hi byte).
 ;        C clear on success, C set on errno (X = $FF).
 ;   Side effect: consumes the pushed filename either way.
 ; ------------------------------------------------------------
-rp6502_open:
+ria_open:
         sta     RIA_A
         lda     #RIA_OP_OPEN
         sta     RIA_OP
@@ -31,39 +31,39 @@ rp6502_open:
         rts
 
 ; ------------------------------------------------------------
-; rp6502_close
+; ria_close
 ;   In:  A = kernel fd.
 ;   Out: SPIN return; A = bytes-related result, X = errno indicator.
 ;   tty:/con: are no-ops in the OS so closing them is harmless.
 ; ------------------------------------------------------------
-rp6502_close:
+ria_close:
         sta     RIA_A
         lda     #RIA_OP_CLOSE
         sta     RIA_OP
         jmp     RIA_SPIN              ; tail-call
 
 ; ------------------------------------------------------------
-; rp6502_attr_get
+; ria_attr_get
 ;   In:  A = RIA_ATTR_* id.
 ;   Out: A/X = low/high bytes of the attr value (RIA_SPIN
 ;        convention). RIA_SREG holds bytes 2..3 for 32-bit
 ;        attrs (LRAND).
 ; ------------------------------------------------------------
-rp6502_attr_get:
+ria_attr_get:
         sta     RIA_A
         lda     #RIA_OP_ATTR_GET
         sta     RIA_OP
         jmp     RIA_SPIN
 
 ; ------------------------------------------------------------
-; rp6502_push_string
+; ria_push_string
 ;   Evaluate the next BASIC expression as a string and push its
 ;   bytes onto RIA_XSTACK in reverse order. Trailing 0 comes
 ;   from short-stacking past the bottom. Errors (?FILE DATA)
 ;   on empty string or non-string type via lsav_err_baddata.
 ;   Trashes A/X/Y.
 ; ------------------------------------------------------------
-rp6502_push_string:
+ria_push_string:
         jsr     FRMEVL                 ; evaluate expression → FAC
         jsr     CHKSTR                 ; bomb out if not a string
         jsr     FREFAC                 ; A=length, INDEX=ptr to bytes
@@ -81,13 +81,13 @@ rp6502_push_string:
         rts
 
 ; ------------------------------------------------------------
-; rp6502_init_io
+; ria_init_io
 ;   Open "tty:" O_WRONLY into tty_fd, "con:" O_RDONLY into con_fd.
 ;   Also wipes LFTAB and resets in_fd/out_fd/lsav_fd so a warm
 ;   start doesn't carry stale fds from the prior run — the OS
 ;   side has invalidated all of them by the time we reach here.
 ; ------------------------------------------------------------
-rp6502_init_io:
+ria_init_io:
         ; Wipe LFTAB to all $FF (no lfn open).
         ldx #<(__LFTAB_SIZE__ - 1)
         lda #$FF
@@ -108,7 +108,7 @@ rp6502_init_io:
         lda #'t'
         sta RIA_XSTACK
         lda #O_WRONLY
-        jsr rp6502_open
+        jsr ria_open
         sta tty_fd
 
         lda #':'
@@ -120,7 +120,7 @@ rp6502_init_io:
         lda #'c'
         sta RIA_XSTACK
         lda #O_RDONLY
-        jsr rp6502_open
+        jsr ria_open
         sta con_fd
 
         ; Default CHROUT target = tty_fd. SAVE temporarily swaps this
@@ -133,7 +133,7 @@ rp6502_init_io:
         sta in_fd
         ; Default GETLN target = CHRIN. LOAD swaps this to its
         ; own per-byte file-reader, then restores on EOF; CHKIN swaps
-        ; it to rp6502_filin for INPUT#.
+        ; it to ria_filin for INPUT#.
         lda #<CHRIN
         sta getln_vec
         lda #>CHRIN
@@ -189,17 +189,20 @@ CHROUT:
 
 @write_err:
         ; tty: write errors are unrecoverable — ERROR's own message
-        ; would just re-enter CHROUT — so eat them. File-fd errors
-        ; (SAVE in progress, e.g. disk full) abort the SAVE: ZXSTACK
-        ; flushes the partial WRITE_XSTACK state, lsav_abort restores
-        ; out_fd to tty before close, then BADDATA reports it.
+        ; would just re-enter CHROUT — so eat them. Non-tty out_fd
+        ; means either SAVE redirected to a file (disk full mid-LIST)
+        ; or CHKOUT redirected to a user PRINT# fd; either way drain
+        ; the partial WRITE_XSTACK op and route through ERROR. Its
+        ; lsav_panic prologue restores out_fd to tty and tears down
+        ; any active LOAD/SAVE state, idempotent when neither is
+        ; active — so PRINT# write errors get the right teardown
+        ; without a spurious close on lsav_fd=0.
         lda out_fd
         cmp tty_fd
         beq @write_drop
-        rp6502_zxstack
+        ria_zxstack
         ply
         plx
-        jsr lsav_abort
         jmp lsav_err_baddata
 @write_drop:
         tya
@@ -238,14 +241,14 @@ GETIN:
         bra @done
 
 ; ------------------------------------------------------------
-; rp6502_tab_completion
+; ria_tab_completion
 ;   Called from CHRIN's wait loop when the user presses TAB.
 ;   Peeks the current readline buffer; if it parses as a single
 ;   decimal line number that exists in the program, replaces the
 ;   editor's contents with `<lineno> <detokenized text>` so the
 ;   user can edit the line in place.
 ; ------------------------------------------------------------
-rp6502_tab_completion:
+ria_tab_completion:
         ; --- Phase A: peek current readline buffer onto xstack. ---
         lda #RIA_OP_RLN_PEEK
         sta RIA_OP
@@ -302,7 +305,7 @@ rp6502_tab_completion:
 
 @bad:
         ; Drain remaining xstack and bail.
-        rp6502_zxstack
+        ria_zxstack
         rts
 
 @parsed:
@@ -312,7 +315,7 @@ rp6502_tab_completion:
         bcc @done
 
         ; --- Phase C: list the line into INBUF via redirect. ---
-        ; Setting chrout_ptr+1 (now $FE) flips rp6502_chrout to
+        ; Setting chrout_ptr+1 (now $FE) flips CHROUT to
         ; buffer-fill mode. Enter LIST's per-line emitter at L25A6X
         ; with LOWTRX (= LOWTR) pre-loaded by FNDLIN; LINNUM is
         ; both range bounds, so the walker prints the matched line,
@@ -383,7 +386,7 @@ CHRIN:
         ; SIGINT before anything else — once Ctrl-C has latched, we
         ; must not read another con: byte or feed one to the caller.
         lda #RIA_ATTR_SIGINT
-        jsr rp6502_attr_get
+        jsr ria_attr_get
         cmp #$01
         beq @sigint
 
@@ -405,12 +408,12 @@ CHRIN:
         lda RIA_XSTACK            ; pop the one byte
         cmp #$09                  ; TAB?
         bne @wait
-        jsr rp6502_tab_completion
+        jsr ria_tab_completion
         bra @wait
 
 @drain_lastkey:
         beq @wait                 ; 0 bytes — nothing on xstack
-        rp6502_zxstack
+        ria_zxstack
         bra @wait
 
 @sigint:
@@ -432,7 +435,7 @@ CHRIN:
         lda #RIA_OP_READ_XSTACK
         sta RIA_OP
         jsr RIA_SPIN
-        rp6502_zxstack
+        ria_zxstack
 
         ; Return A=$03 as the cancel sentinel. Our INLIN matches it
         ; via `cmp #$03; beq @cancel`, resets its accumulator, and
@@ -482,7 +485,7 @@ ISCNTC:
         lda chrout_ptr+1          ; tab completion in progress: skip
         bne @done                 ; (see header comment)
         lda #RIA_ATTR_SIGINT
-        jsr rp6502_attr_get
+        jsr ria_attr_get
         cmp #$01
         bne @done
         lda #$FF                  ; drain tty: of the user's Ctrl-C
@@ -492,7 +495,7 @@ ISCNTC:
         lda #RIA_OP_READ_XSTACK
         sta RIA_OP
         jsr RIA_SPIN
-        rp6502_zxstack
+        ria_zxstack
         jsr lsav_abort            ; restore I/O if SAVE was mid-LIST
         sec                       ; C=1 for STOP entry
         jmp STOP
@@ -500,28 +503,13 @@ ISCNTC:
         rts
 
 ; ------------------------------------------------------------
-; rp6502_lrand — pull 31 bits from the OS hardware RNG.
-;   ria_attr_get(RIA_ATTR_LRAND) returns 32-bit axsreg with the high
-;   bit cleared (com.c masks 0x7FFFFFFF). On return:
-;     A         = byte 0 (LSB)        ← also at RIA_A
-;     X         = byte 1              ← also at RIA_X
-;     RIA_SREG  = byte 2
-;     RIA_SREG+1= byte 3 (MSB, high bit always 0)
-;   Caller reads from the RIA registers — the RTS-side LDA/LDX in
-;   the fastcall return only carry the low 16 bits.
-; ------------------------------------------------------------
-rp6502_lrand:
-        lda #RIA_ATTR_LRAND
-        jmp rp6502_attr_get       ; tail-call
-
-; ------------------------------------------------------------
-; rp6502_linprt — like upstream LINPRT but skips the leading
+; LINPRTNS — like upstream LINPRT but skips the leading
 ; sign-position space FOUT normally emits. Used by LIST/SAVE
 ; (listings start at column 0) and the cold-boot banner. Same
 ; logic as LINPRT in float.s, but enters FOUT at FOUT1 with Y=0
 ; (the STR$-style entry that drops the sign char).
 ; ------------------------------------------------------------
-rp6502_linprt:
+LINPRTNS:
         sta     FAC+1
         stx     FAC+2
         ldx     #$90

@@ -572,7 +572,7 @@ L25C1:
 ; ---LIST ONE LINE----------------
 L25C3:
         sty     FORPNT
-        jsr     rp6502_linprt
+        jsr     LINPRTNS
         lda     #$20
 L25CA:
         ldy     FORPNT

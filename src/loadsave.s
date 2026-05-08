@@ -31,9 +31,9 @@ lsav_err_baddata:
 ; CHROUT back to tty, close the file.
 ; ============================================================
 SAVE:
-        jsr     rp6502_push_string
+        jsr     ria_push_string
         lda     #O_WRONLY | O_CREAT | O_TRUNC
-        jsr     rp6502_open
+        jsr     ria_open
         bcs     lsav_err_baddata
         sta     lsav_fd
         sta     out_fd                 ; redirect CHROUT to the file
@@ -56,7 +56,7 @@ SAVE:
         sta     out_fd
         lda     lsav_fd
         stz     lsav_fd
-        jsr     rp6502_close
+        jsr     ria_close
         cpx     #$FF
         beq     lsav_err_baddata       ; flush failed ⇒ file truncated
         rts
@@ -77,7 +77,7 @@ lsav_abort:
         lda     tty_fd
         sta     out_fd
         lda     lsav_fd
-        jsr     rp6502_close
+        jsr     ria_close
         stz     lsav_fd
 @done:
         rts
@@ -109,7 +109,7 @@ lsav_panic:
         beq     @done
         stz     lsav_fd
         phx
-        jsr     rp6502_close
+        jsr     ria_close
         plx
 @done:
         rts
@@ -122,9 +122,9 @@ lsav_panic:
 ; the default GETLN, resets the stack, and jmps to RESTART.
 ; ============================================================
 LOAD:
-        jsr     rp6502_push_string
+        jsr     ria_push_string
         lda     #O_RDONLY
-        jsr     rp6502_open
+        jsr     ria_open
         jcs     lsav_err_baddata
         sta     lsav_fd
         stz     TEMP1                  ; LOAD borrows TEMP1 as the
@@ -152,7 +152,7 @@ LOAD:
 ; ============================================================
 lsav_load_err:
         lda     lsav_fd
-        jsr     rp6502_close
+        jsr     ria_close
         lda     #<CHRIN
         sta     getln_vec
         lda     #>CHRIN
@@ -171,9 +171,7 @@ lsav_load_err:
 ; ============================================================
 lsav_load_chrin:
         ; INLIN holds its buffer index in X across each jsr GETLN, and
-        ; RIA_SPIN clobbers X. Preserve via the 6502 stack — we can't
-        ; use rp6502_sv_x/y because STROUT in the @eof path goes
-        ; through CHROUT, which writes those same slots as scratch.
+        ; RIA_SPIN clobbers X. Preserve via the 6502 stack.
         phx
         phy
 
@@ -225,7 +223,7 @@ lsav_load_chrin:
         ; STROUT below clobbers CHROUT's scratch slots, but X/Y are on
         ; the 6502 stack from entry, safe there.
         lda     lsav_fd
-        jsr     rp6502_close
+        jsr     ria_close
         stz     lsav_fd                ; clear LOAD-active flag
 
         lda     auto_run

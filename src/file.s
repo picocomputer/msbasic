@@ -1,5 +1,5 @@
 ; Picocomputer 6502 BASIC file I/O. Implements OPEN, CLOSE, INPUT#,
-; CHKIN, CHKOUT, CLRCH, plus the GETLN-shaped reader rp6502_filin.
+; CHKIN, CHKOUT, CLRCH, plus the GETLN-shaped reader ria_filin.
 ; PRINT#, GET#, and CMD are already implemented in misc1.s/input.s
 ; and just consume CHKOUT/CHKIN/CLRCH as black-box stubs — those
 ; stubs come live here.
@@ -47,7 +47,7 @@ OPEN:
         lda     #','
         jsr     SYNCHR                  ; require comma before name
 
-        jsr     rp6502_push_string      ; FRMEVL → CHKSTR → push reversed
+        jsr     ria_push_string         ; FRMEVL → CHKSTR → push reversed
                                         ; bytes onto RIA_XSTACK; null
                                         ; terminator short-stacks for free.
                                         ; From here on, any abort before
@@ -68,7 +68,7 @@ OPEN:
 @default_mode:
         lda     #O_RDONLY
 @open:
-        jsr     rp6502_open             ; consumes xstack on success or errno
+        jsr     ria_open                ; consumes xstack on success or errno
         bcs     @open_failed
         tay                             ; save kernel fd; pla clobbers A
         pla                             ; A = lfn
@@ -84,9 +84,9 @@ file_err:
         jmp     lsav_err_baddata        ; ?FILE DATA ERROR
 
 ; Same destination, but first drains any pushed xstack bytes.
-; Used by error paths between lsav_push_filename and rp6502_open.
+; Used by error paths between lsav_push_filename and ria_open.
 file_err_zx:
-        rp6502_zxstack
+        ria_zxstack
         jmp     lsav_err_baddata
 
 ; ------------------------------------------------------------
@@ -171,7 +171,7 @@ CLOSE:
         cmp     #$FF
         beq     @done                   ; already closed
         phx                             ; save lfn across the close
-        jsr     rp6502_close
+        jsr     ria_close
         plx
         lda     #$FF
         sta     __LFTAB_START__,x
@@ -183,7 +183,7 @@ CLOSE:
 ; Pattern mirrors PRINTH/CMD in misc1.s: parse lfn, swap I/O via
 ; CHKIN, jsr the INPUT body, fall through to LCAD6 cleanup. EOF
 ; mid-statement is handled inside INPUT itself (input.s:131-137)
-; via the Z96-bit-1 flag rp6502_filin sets on short read.
+; via the Z96-bit-1 flag ria_filin sets on short read.
 ; ============================================================
 INPUTH:
         ; Clear Z96 bit 1 (EOF) at entry so a previous file's EOF
@@ -203,7 +203,7 @@ INPUTH:
 ; ============================================================
 ; CHKIN — redirect input from lfn (X = lfn).
 ; Looks up the kernel fd, stores it in in_fd, and points
-; getln_vec at rp6502_filin so INLIN's per-byte reads route
+; getln_vec at ria_filin so INLIN's per-byte reads route
 ; through the file. Preserves X for the caller's stx CURDVC.
 ; ============================================================
 CHKIN:
@@ -213,9 +213,9 @@ CHKIN:
         cmp     #$FF
         beq     @bad
         sta     in_fd
-        lda     #<rp6502_filin
+        lda     #<ria_filin
         sta     getln_vec
-        lda     #>rp6502_filin
+        lda     #>ria_filin
         sta     getln_vec+1
         rts
 @bad:
@@ -223,7 +223,7 @@ CHKIN:
 
 ; ============================================================
 ; CHKOUT — redirect output to lfn (X = lfn).
-; Looks up the kernel fd and stores it in out_fd; rp6502_chrout
+; Looks up the kernel fd and stores it in out_fd; CHROUT
 ; already routes there and retries partial writes for tty:
 ; flow control. Preserves X.
 ; ============================================================
@@ -254,7 +254,7 @@ CLRCH:
         rts
 
 ; ============================================================
-; rp6502_filin — GETLN hook for INPUT# mode.
+; ria_filin — GETLN hook for INPUT# mode.
 ; Reads one byte from in_fd, translates LF→CR, returns it in A.
 ; On short read (bytes_returned < 1) or errno: sets Z96 bit 1
 ; (EOF) and returns CR so INLIN closes the line cleanly; the
@@ -265,7 +265,7 @@ CLRCH:
 ; (matches lsav_load_chrin's contract — INLIN holds its buffer
 ; index in X across each GETLN call).
 ; ============================================================
-rp6502_filin:
+ria_filin:
         phx
         phy
         lda     #$01

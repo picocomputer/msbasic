@@ -7,9 +7,9 @@
 
 .segment "HEADER"
 
-rp6502_start:
+WARM_START:
         ldx #STACK_TOP
         txs
         cld
-        jsr rp6502_init_io
+        jsr ria_init_io
         jmp RESTART

@@ -1,12 +1,13 @@
 .segment "INIT"
 
+COLD_START:
         ; First-boot prologue. Reset vector points here on cold load
         ; (CMake RESET 0x1000); HEADER's warm shim does the same setup
         ; on every subsequent reset after we rewrite $FFFC below.
         ldx #STACK_TOP
         txs
         cld
-        jsr rp6502_init_io
+        jsr ria_init_io
 
         ; Seed RNDSEED with 31 bits of OS entropy. RNDSEED is 5 bytes
         ; of FP: exponent + 4-byte mantissa. Set exponent $80 for a
@@ -17,13 +18,12 @@
         ; bytes carry random bits with no sign-position constraint.
         lda #$80
         sta RNDSEED
-        jsr rp6502_lrand
+        lda #RIA_ATTR_LRAND
+        jsr ria_attr_get
+        sta RNDSEED+2
+        stx RNDSEED+3
         lda RIA_SREG+1
         sta RNDSEED+1
-        lda RIA_A
-        sta RNDSEED+2
-        lda RIA_X
-        sta RNDSEED+3
         lda RIA_SREG
         sta RNDSEED+4
 
@@ -58,9 +58,9 @@
 
         ; ZP and program-memory pointers are now valid, so HEADER's
         ; warm shim can take over. Hand future hardware resets to it.
-        lda #<rp6502_start
+        lda #<WARM_START
         sta $FFFC
-        lda #>rp6502_start
+        lda #>WARM_START
         sta $FFFD
 
         lda #<QT_BANNER
@@ -69,7 +69,7 @@
 
         ldx #<(__TXTTAB_SIZE__ - 3)
         lda #>(__TXTTAB_SIZE__ - 3)
-        jsr rp6502_linprt
+        jsr LINPRTNS
         lda #<QT_BYTES_FREE
         ldy #>QT_BYTES_FREE
         jsr STROUT
@@ -90,7 +90,7 @@
         sta __INBUF_START__,y
         iny
         bne @argv_pop
-        rp6502_zxstack
+        ria_zxstack
 
         ; Walk argv[1..]: each -c[0-2] updates the caps mode (last
         ; one wins); the first non-flag argument is remembered as
@@ -150,8 +150,8 @@
         bra @argv_loop
 
 @argv_done:
-        ; Apply caps mode (default or -c<n>); rp6502_caps_set takes X.
-        jsr rp6502_caps_set
+        ; Apply caps mode (default or -c<n>); ria_caps_set takes X.
+        jsr ria_caps_set
 
         ; If a filename was found, push it and auto-load.
         lda DEST+1
@@ -180,7 +180,7 @@
         bne @argv_push
 
         lda #O_RDONLY
-        jsr rp6502_open
+        jsr ria_open
         bcs @argv_open_failed     ; same path as a typed LOAD failure
         sta lsav_fd
         stz TEMP1                 ; lsav_load_chrin's per-line byte
