@@ -1,4 +1,4 @@
-; --- linker config ---
+; --- linker config imports and validation ---
 .import __TXTTAB_START__, __TXTTAB_SIZE__
 .import __LFTAB_START__, __LFTAB_SIZE__
 .assert __LFTAB_SIZE__ <= 256, error, "LFTAB size must fit in X (<=256)"
@@ -14,13 +14,14 @@
 ; --- 6502 STACK ---
 ; The stack start can not be changed
 STACK           := $0100
+; The top can be reserved
 STACK_TOP       := $FF
 ; Headroom CHKMEM keeps above each operation's 2*N reservation so
 ; the deepest non-re-gated sub-tree fits before the next gate fires.
 ; Audited deepest chain: FRMEVL -> ^ -> LOG -> POLYNOMIAL_ODD ->
 ; SERMAIN -> FMULT -> LOAD_ARG_FROM_YA, 24 bytes from gate; FRMEVL's
-; 2*N=2 covers the first two, so S>=22 suffices. rp6502 keeps IRQs
-; masked so no kernal-handler overhead is needed on top.
+; 2*N=2 covers the first two, so S>=22 suffices. Plus a handful for
+; when we forget to check this with a future change.
 SPACE_FOR_GOSUB := $20
 
 ; --- size math derived from BYTES_FP ---
