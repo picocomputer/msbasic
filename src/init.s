@@ -1,6 +1,13 @@
 .segment "INIT"
 
-COLD_START:
+        ; First-boot prologue. Reset vector points here on cold load
+        ; (CMake RESET 0x1000); HEADER's warm shim does the same setup
+        ; on every subsequent reset after we rewrite $FFFC below.
+        ldx #STACK_TOP
+        txs
+        cld
+        jsr rp6502_init_io
+
         ; Seed RNDSEED with 31 bits of OS entropy. RNDSEED is 5 bytes
         ; of FP: exponent + 4-byte mantissa. Set exponent $80 for a
         ; well-formed value; first RND(positive) normalizes. Bit 7
@@ -47,11 +54,14 @@ COLD_START:
         stx TEMPPT
 
         stz __TXTTAB_START__  ;synthetic "previous-line terminator"
-        lda #<(__TXTTAB_START__+__TXTTAB_SIZE__)
-        sta FRETOP
-        lda #>(__TXTTAB_START__+__TXTTAB_SIZE__)
-        sta FRETOP+1
-        jsr SCRTCH
+        jsr SCRTCH            ; falls through to CLEARC, which sets FRETOP
+
+        ; ZP and program-memory pointers are now valid, so HEADER's
+        ; warm shim can take over. Hand future hardware resets to it.
+        lda #<rp6502_start
+        sta $FFFC
+        lda #>rp6502_start
+        sta $FFFD
 
         lda #<QT_BANNER
         ldy #>QT_BANNER

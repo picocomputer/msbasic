@@ -20,5 +20,5 @@ rp6502_byproducts(basic
 )
 rp6502_asset(basic help src/help.txt)
 rp6502_asset(basic 0x00E8 ${CMAKE_CURRENT_BINARY_DIR}/basic.0)
-rp6502_asset(basic 0x1000 ${CMAKE_CURRENT_BINARY_DIR}/basic.1)
-rp6502_executable(basic DATA 0xC000 RESET 0xC000)
+rp6502_asset(basic 0xC000 ${CMAKE_CURRENT_BINARY_DIR}/basic.1)
+rp6502_executable(basic DATA 0x1000 RESET 0x1000)
