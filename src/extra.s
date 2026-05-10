@@ -43,19 +43,6 @@ ria_close:
         jmp     RIA_SPIN              ; tail-call
 
 ; ------------------------------------------------------------
-; ria_attr_get
-;   In:  A = RIA_ATTR_* id.
-;   Out: A/X = low/high bytes of the attr value (RIA_SPIN
-;        convention). RIA_SREG holds bytes 2..3 for 32-bit
-;        attrs (LRAND).
-; ------------------------------------------------------------
-ria_attr_get:
-        sta     RIA_A
-        lda     #RIA_OP_ATTR_GET
-        sta     RIA_OP
-        jmp     RIA_SPIN
-
-; ------------------------------------------------------------
 ; ria_push_string
 ;   Evaluate the next BASIC expression as a string and push its
 ;   bytes onto RIA_XSTACK in reverse order. Trailing 0 comes
@@ -247,6 +234,8 @@ GETIN:
 ;   decimal line number that exists in the program, replaces the
 ;   editor's contents with `<lineno> <detokenized text>` so the
 ;   user can edit the line in place.
+;   Caller drains xstack after return (paths that bail early may
+;   leave bytes on it).
 ; ------------------------------------------------------------
 ria_tab_completion:
         ; --- Phase A: peek current readline buffer onto xstack. ---
@@ -304,8 +293,7 @@ ria_tab_completion:
                                   ; long before iny could wrap Y to 0
 
 @bad:
-        ; Drain remaining xstack and bail.
-        ria_zxstack
+        ; Bail with leftover digits on xstack — caller drains.
         rts
 
 @parsed:
@@ -385,10 +373,8 @@ CHRIN:
 @wait:
         ; SIGINT before anything else — once Ctrl-C has latched, we
         ; must not read another con: byte or feed one to the caller.
-        lda #RIA_ATTR_SIGINT
-        jsr ria_attr_get
-        cmp #$01
-        beq @sigint
+        bit RIA_IRQ               ; V = bit 6 (sigint latch); read clears
+        bvs @sigint
 
         lda #$01
         sta RIA_XSTACK            ; count = 1; hi byte short-stacks to 0
@@ -404,16 +390,13 @@ CHRIN:
         sta RIA_OP
         jsr RIA_SPIN
         cmp #1                    ; exactly one byte?
-        bne @drain_lastkey
+        bne @drain                ; 0 or 2+ bytes — just drain
         lda RIA_XSTACK            ; pop the one byte
         cmp #$09                  ; TAB?
         bne @wait
         jsr ria_tab_completion
-        bra @wait
-
-@drain_lastkey:
-        beq @wait                 ; 0 bytes — nothing on xstack
-        ria_zxstack
+@drain:
+        ria_zxstack               ; idempotent: stz RIA_OP
         bra @wait
 
 @sigint:
@@ -461,10 +444,10 @@ CHRIN:
 
 ; ------------------------------------------------------------
 ; ISCNTC — break detection via OS sidechannel.
-;   ria_attr_get(RIA_ATTR_SIGINT) returns the latched Ctrl-C flag
-;   and clears it atomically (com_get_sigint in the RIA OS), so
-;   the SIGINT poll itself doesn't compete with GET for tty: bytes.
-;   A=0 → no break (rts). A=1 → break:
+;   BIT RIA_IRQ loads bit 6 (the latched Ctrl-C flag) into V and
+;   the read clears the latch atomically, so the SIGINT poll itself
+;   doesn't compete with GET for tty: bytes.
+;   V=0 → no break (rts). V=1 → break:
 ;     1. Drain tty: of any $03 bytes the user's Ctrl-C also queued
 ;        (without this, a CONT'd GET would assign chr$(3) to its
 ;        variable).
@@ -484,10 +467,8 @@ CHRIN:
 ISCNTC:
         lda chrout_ptr+1          ; tab completion in progress: skip
         bne @done                 ; (see header comment)
-        lda #RIA_ATTR_SIGINT
-        jsr ria_attr_get
-        cmp #$01
-        bne @done
+        bit RIA_IRQ               ; V = bit 6 (sigint latch); read clears
+        bvc @done
         lda #$FF                  ; drain tty: of the user's Ctrl-C
         sta RIA_XSTACK            ; count lo = 255; hi short-stacks
         lda tty_fd

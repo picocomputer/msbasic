@@ -68,7 +68,7 @@ LOAD "prog.bas"
 CAPS <expr>
 ```
 
-Sets the readline editor's caps mode at runtime: `0` off, `1` on, `2` invert. Same modes as the `-c<n>` launch flag. Anything else raises `?ILLEGAL QUANTITY`.
+Sets the readline editor's caps mode at runtime: `0` off, `1` on, `2` invert. Same modes as the `-c<n>` launch flag.
 
 ## Editor and runtime conveniences
 

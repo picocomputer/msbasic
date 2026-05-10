@@ -19,7 +19,10 @@ COLD_START:
         lda #$80
         sta RNDSEED
         lda #RIA_ATTR_LRAND
-        jsr ria_attr_get
+        sta RIA_A
+        lda #RIA_OP_ATTR_GET
+        sta RIA_OP
+        jsr RIA_SPIN
         sta RNDSEED+2
         stx RNDSEED+3
         lda RIA_SREG+1
