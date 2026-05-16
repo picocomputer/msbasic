@@ -357,10 +357,19 @@ L24C8:
         beq     L24AC
         cmp     ENDCHR
         beq     L24AC
+        cmp     #$20                    ; silently drop control chars
+        bcc     :+                      ; ($01..$1F) inside string/REM
+                                        ; literals: the LIST --More--
+                                        ; pager assumes ASCII-clean
+                                        ; output, and there is no
+                                        ; legitimate reason for a
+                                        ; tokenized program to carry
+                                        ; raw control bytes through a
+                                        ; SAVE/LOAD roundtrip.
 L24D0:
         iny
         sta     __INBUF_START__-5,y
-        inx
+:       inx
         bne     L24C8
 ; ----------------------------------------------------------------------------
 ; ADVANCE POINTER TO NEXT TOKEN NAME
@@ -397,7 +406,9 @@ L24DB:
         sta     TOKBASE_TOKEN
         ldy     #$00            ; index at bin B's first keyword
         stz     EOLPNTR
-        bra     L2498
+        jmp     L2498           ; out of bra range after the L24C8 ctrl-char
+                                ; filter added 4 bytes upstream
+
 @no_match:
         lda     __INBUF_START__,x
         bpl     L24AA
@@ -547,6 +558,17 @@ L2598:
         sta     LINNUM
         sta     LINNUM+1
 L25A6:
+        jsr     pager_arm               ; arms --More-- (gates on direct mode,
+                                        ; out_fd == tty, terminal dims). Placed
+                                        ; AFTER LIST's arg-dispatch so it
+                                        ; doesn't clobber the carry/zero flags
+                                        ; that bcc/beq L2581 above need, and
+                                        ; placed BEFORE L25A6X (a separate
+                                        ; entry) so tab completion's direct
+                                        ; jsr L25A6X bypasses the arm and keeps
+                                        ; chrout_vec pointed at chrout_buf.
+                                        ; Matching disarm: chrout_vec_reset
+                                        ; at L25E5.
 L25A6X:
         ldy     #$01
         lda     (LOWTRX),y
@@ -590,8 +612,16 @@ L25CE:
         lda     (LOWTRX),y
         stx     LOWTRX
         sta     LOWTRX+1
-        bne     L25A6
+        bne     L25A6X                  ; per-line loop top; skip pager_arm
+                                        ; which is one-shot per LIST and lives
+                                        ; in the L25A6 entry prologue.
 L25E5:
+        jsr     chrout_vec_reset        ; pager teardown (idempotent if pager
+                                        ; wasn't armed). Tab completion's
+                                        ; L25A6X call also lands here, but its
+                                        ; post-L25A6X work touches xstack
+                                        ; directly (not CHROUT), so the early
+                                        ; reset doesn't break it.
         rts
 L25E8:
         bpl     L25CE

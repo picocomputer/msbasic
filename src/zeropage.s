@@ -75,10 +75,15 @@ out_fd:        .res 1   ; current output fd; tty_fd by default
 in_fd:         .res 1   ; current input fd; tty_fd by default
 lsav_fd:       .res 1   ; SAVE/LOAD active fd
 getln_vec:     .res 2   ; GETLN indirection; CHRIN by default, swapped by LOAD
-chrout_ptr:    .res 2   ; CHROUT target buffer; non-zero hi → buffer mode
+chrout_vec:    .res 2   ; CHROUT dispatch target: chrout_fd (default), chrout_buf
+                        ; (tab completion), or chrout_pager (LIST --More-- hook).
 auto_run:      .res 1   ; cold-boot auto-load + RUN state machine
                         ;   0   = idle (normal LOAD)
                         ;   1   = auto-load mode (file read in progress)
                         ;   2..4 = post-EOF emitting "UN\r" through INLIN
                         ;          (the 'R' is emitted directly from
                         ;          the EOF→start_auto_run handoff)
+more_height:   .res 1   ; LIST pager: terminal rows (held while armed).
+more_width:    .res 1   ; LIST pager: terminal cols.
+more_rows_left:.res 1   ; LIST pager: rows of headroom before next --More--.
+more_col:      .res 1   ; LIST pager: tracked column 0..more_width.

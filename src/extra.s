@@ -125,38 +125,36 @@ ria_init_io:
         sta getln_vec
         lda #>CHRIN
         sta getln_vec+1
+        ; Default CHROUT dispatch goes to chrout_fd. Tab completion
+        ; and the LIST --More-- pager swap this transiently.
+        lda #<chrout_fd
+        sta chrout_vec
+        lda #>chrout_fd
+        sta chrout_vec+1
         rts
 
 ; ------------------------------------------------------------
 ; CHROUT
-;   Write A to the current out_fd (tty: by default, file fd
-;   during SAVE) — or, if tab completion has flipped chrout_ptr
-;   on, append A to the INBUF staging area instead.
-;   Preserves A, X, Y. Loops on partial writes (op may return
-;   bytes_written < 1 while the OS-side tx queue drains).
+;   Dispatch trampoline. The default chrout_vec is chrout_fd (write
+;   A to out_fd: tty: by default, file fd during SAVE). Tab completion
+;   swaps in chrout_buf to capture LIST output into INBUF; the LIST
+;   --More-- pager swaps in chrout_pager to track column/budget and
+;   pause mid-LIST. Every target preserves A/X/Y.
 ; ------------------------------------------------------------
 CHROUT:
+        jmp (chrout_vec)
+
+; ------------------------------------------------------------
+; chrout_fd — default CHROUT target.
+;   Writes A to out_fd. Loops on partial writes (op may return
+;   bytes_written < 1 while the OS-side tx queue drains).
+;   Preserves A, X, Y.
+; ------------------------------------------------------------
+chrout_fd:
         phx
         phy
         tay                       ; Y holds the byte across RIA_SPIN
                                   ; (which clobbers A and X but not Y)
-
-        ; Buffer-redirect path: tab completion sets chrout_ptr to
-        ; INBUF and uses the high byte as a "buffer mode" flag
-        ; (INBUF lives at $FE00 so hi is always non-zero when
-        ; active). Sink the byte into the buffer instead of out_fd.
-        lda chrout_ptr+1
-        beq @write_fd
-        tya
-        sta (chrout_ptr)          ; 65C02 zp-indirect
-        inc chrout_ptr
-        bne @buf_done
-        inc chrout_ptr+1
-@buf_done:                        ; A still = byte (sta/inc/bne don't touch A)
-        ply
-        plx
-        rts
-
 @write_fd:
         sty RIA_XSTACK
         lda out_fd
@@ -195,6 +193,26 @@ CHROUT:
         tya
         ply
         plx
+        rts
+
+; ------------------------------------------------------------
+; chrout_buf — tab completion's CHROUT target. Appends A to
+; INBUF at offset inbuf_off, saturating at $FF so a >256-char
+; detokenized line (many ?→PRINT expansions) can't walk past
+; INBUF into the RIA register page at $FF00. ria_tab_completion
+; checks inbuf_off == $FF after L25A6X to detect overflow and
+; abandon the completion.
+;   Preserves A, X, Y.
+; ------------------------------------------------------------
+chrout_buf:
+        phy
+        ldy inbuf_off
+        cpy #$FF                  ; buffer full → silently drop
+        beq @done
+        sta __INBUF_START__,y
+        inc inbuf_off
+@done:
+        ply
         rts
 
 ; ------------------------------------------------------------
@@ -303,25 +321,29 @@ ria_tab_completion:
         bcc @done
 
         ; --- Phase C: list the line into INBUF via redirect. ---
-        ; Setting chrout_ptr+1 (now $FE) flips CHROUT to
-        ; buffer-fill mode. Enter LIST's per-line emitter at L25A6X
-        ; with LOWTRX (= LOWTR) pre-loaded by FNDLIN; LINNUM is
-        ; both range bounds, so the walker prints the matched line,
-        ; CRDOs, advances to the next line, then exits via the
-        ; range check (next line number is strictly higher).
-        lda #<__INBUF_START__
-        sta chrout_ptr
-        lda #>__INBUF_START__
-        sta chrout_ptr+1
+        ; Install chrout_buf into chrout_vec so LIST's CHROUT calls
+        ; sink into INBUF[inbuf_off]. Enter LIST's per-line emitter
+        ; at L25A6X with LOWTRX (= LOWTR) pre-loaded by FNDLIN;
+        ; LINNUM is both range bounds, so the walker prints the
+        ; matched line, CRDOs, advances to the next line, then
+        ; exits via the range check (next line number is strictly
+        ; higher).
+        stz inbuf_off
+        lda #<chrout_buf
+        sta chrout_vec
+        lda #>chrout_buf
+        sta chrout_vec+1
         jsr L25A6X
-        ; Restore normal CHROUT-to-fd and capture the buffer length,
-        ; trimming the trailing CR LF that the end-of-line CRDO wrote.
+        jsr chrout_vec_reset      ; back to default chrout_fd
+        ; If chrout_buf saturated at $FF the line overflowed INBUF
+        ; (>256 chars detokenized) — pushing a truncated listing
+        ; would corrupt the user's edit buffer, so bail.
+        lda inbuf_off
+        cmp #$FF
+        beq @done
         sec
-        lda chrout_ptr
-        sbc #<__INBUF_START__
-        sbc #2                    ; -2 for CR LF (carry already set)
+        sbc #2                    ; -2 for CR LF
         tay                       ; Y = listing length, expected ≥ 1
-        stz chrout_ptr+1          ; back to file-write mode
         beq @done                 ; defensive: nothing to push
 
         ; --- Phase D: push poke to xstack. ---
@@ -352,6 +374,15 @@ ria_tab_completion:
 
 esc_clear_line: .byte $1B, '[', 'H', $1B, '[', '2', '5', '6', 'P'
 esc_clear_line_end:
+
+inbuf_off:      .byte 0           ; chrout_buf write offset into INBUF (0..$FF;
+                                  ; $FF = saturated/overflow). Lives outside
+                                  ; ZP since only tab completion touches it.
+
+more_prompt_str: .byte "--More--", 0
+more_erase_str:  .byte $08, $08, $08, $08, $08, $08, $08, $08
+                 .byte $20, $20, $20, $20, $20, $20, $20, $20
+                 .byte $08, $08, $08, $08, $08, $08, $08, $08, 0
 
 ; ------------------------------------------------------------
 ; CHRIN
@@ -400,9 +431,8 @@ CHRIN:
         bra @wait
 
 @sigint:
-        ; Poke CR so the OS line editor releases whatever the user
-        ; had typed (if anything) plus the CR onto con:.
-        lda #$0D
+        ; Poke CTRL-C so the OS line editor releases with ^C notification.
+        lda #$03
         sta RIA_XSTACK
         lda #RIA_OP_RLN_POKE
         sta RIA_OP
@@ -454,19 +484,18 @@ CHRIN:
 ;     2. Call lsav_abort to tear down SAVE state if LIST was mid-
 ;        iteration; otherwise the BREAK message would land in the
 ;        save file (out_fd) instead of the terminal.
-;     3. Set up STOP entry: A=0, C=1, Z=1 so `bcs END2` is taken
+;     3. Restore chrout_vec to chrout_fd via chrout_vec_reset:
+;        ISCNTC can fire deep inside the tab-completion or pager
+;        L25A6X loop, and STOP unwinds the whole stack without
+;        returning through those routines' own restore code. The
+;        reset is unconditional/idempotent — safe in non-overlay
+;        cases too.
+;     4. Set up STOP entry: A=0, C=1, Z=1 so `bcs END2` is taken
 ;        and END2's `bne RET1` falls through into the BREAK path.
 ;        END4's `pla; pla` pops our caller's JSR ISCNTC frame;
 ;        RESTART → STKINI resets SP.
-;
-;   While tab completion is filling INBUF (chrout_ptr+1
-;   non-zero), break checks are suspended: LIST's L25A6X calls
-;   ISCNTC mid-listing, and a STOP from there would unwind with
-;   CHROUT still routed to the buffer.
 ; ------------------------------------------------------------
 ISCNTC:
-        lda chrout_ptr+1          ; tab completion in progress: skip
-        bne @done                 ; (see header comment)
         bit RIA_IRQ               ; V = bit 6 (sigint latch); read clears
         bvc @done
         lda #$FF                  ; drain tty: of the user's Ctrl-C
@@ -478,6 +507,11 @@ ISCNTC:
         jsr RIA_SPIN
         ria_zxstack
         jsr lsav_abort            ; restore I/O if SAVE was mid-LIST
+        jsr chrout_vec_reset      ; restore CHROUT dispatch (pager/tab)
+        lda #$00                  ; Z=1 for STOP entry (the jsr above
+                                  ; clobbered Z via lda #>chrout_fd, and
+                                  ; STOP→END2's `bne RET1` would otherwise
+                                  ; short-circuit out of the BREAK path).
         sec                       ; C=1 for STOP entry
         jmp STOP
 @done:
@@ -499,3 +533,253 @@ LINPRTNS:
         ldy     #$00
         jsr     FOUT1
         jmp     STROUT
+
+; ------------------------------------------------------------
+; pager_arm — call at LIST entry. Validates the pager-enable
+; gates; on success reads width/height from RIA, primes the
+; row budget, and installs chrout_pager into chrout_vec.
+;
+; Gates:
+;   - direct mode only (CURLIN+1 == $FF). LIST from inside a
+;     running program keeps upstream's straight-through behavior.
+;   - out_fd == tty_fd (no CMD/SAVE redirect — no --More-- bytes
+;     should land in saved files).
+;   - terminal dims ≥ 2 in each axis (degenerate values disable).
+;
+; pager_arm is only reachable from the LIST: entry point, which
+; is only reachable from the OK-prompt loop after CHRIN has
+; returned — so chrout_vec is always chrout_fd here and we don't
+; need a saved-vec slot.
+;
+; Preserves nothing; called once per LIST.
+; ------------------------------------------------------------
+pager_arm:
+        stz     more_height               ; default = disarmed
+        lda     CURLIN+1
+        cmp     #$FF
+        bne     @ret
+        lda     out_fd
+        cmp     tty_fd
+        bne     @ret
+        lda     #RIA_ATTR_RLN_WIDTH
+        sta     RIA_A
+        lda     #RIA_OP_ATTR_GET
+        sta     RIA_OP
+        jsr     RIA_SPIN
+        cmp     #2
+        bcc     @ret
+        sta     more_width
+        lda     #RIA_ATTR_RLN_HEIGHT
+        sta     RIA_A
+        lda     #RIA_OP_ATTR_GET
+        sta     RIA_OP
+        jsr     RIA_SPIN
+        cmp     #2
+        bcc     @ret
+        sta     more_height               ; pager now considered armed
+        sec
+        sbc     #1                        ; reserve one row for the prompt
+        sta     more_rows_left
+        stz     more_col
+        lda     #<chrout_pager
+        sta     chrout_vec
+        lda     #>chrout_pager
+        sta     chrout_vec+1
+@ret:   rts
+
+; ------------------------------------------------------------
+; chrout_vec_reset — unconditionally restore chrout_vec to
+; chrout_fd and zero more_height. Idempotent. Called from:
+;   - normal LIST exit (program.s L25E5)
+;   - ISCNTC break path
+;   - more_prompt's @break (q/Q/Ctrl-C at the prompt)
+;   - ria_tab_completion's end-of-listing restore
+; Any "I'm done overlaying CHROUT" site lands here.
+; ------------------------------------------------------------
+chrout_vec_reset:
+        stz     more_height
+        lda     #<chrout_fd
+        sta     chrout_vec
+        lda     #>chrout_fd
+        sta     chrout_vec+1
+        rts
+
+; ------------------------------------------------------------
+; chrout_pager — chrout_vec target while the LIST pager is
+; armed. Intercepts every byte at the CHROUT layer, tracks the
+; pager's view of the cursor, pauses on row-advance events
+; that would push content past the bottom of the screen, then
+; tail-calls chrout_fd to actually emit the byte.
+;
+; Column model: delayed-wrap (xterm/vt100). After writing the
+; W-th char, the cursor sits in a "pending wrap" cell at col W;
+; the wrap fires only when the next printable arrives, which
+; goes to col 1 of the new row.
+;
+; Per-byte:
+;   $0A (LF)        — row advance; pause-if-budget-zero, dec budget.
+;   $0D (CR)        — col := 0.
+;   < $20 (other)   — passthru. CRUNCH drops $01..$1F inside
+;                     string/REM literals, so LIST output is
+;                     control-char-free in practice.
+;   ≥ $20 printable — if col == width, this byte wraps:
+;                     pause-if-budget-zero, dec budget, col := 1.
+;                     Else col := col + 1.
+;
+; A/X/Y preserved (matches chrout_fd's contract; chrout_pager
+; tail-calls chrout_fd so the contract holds end-to-end).
+; Y is saved on entry / restored on exit because the body
+; clobbers it for column tracking, and callers like STROUT
+; iterate (INDEX),y across successive CHROUT calls — they
+; rely on Y surviving the trip through CHROUT.
+; ------------------------------------------------------------
+chrout_pager:
+        phy
+        cmp     #$0A
+        beq     @lf
+        cmp     #$0D
+        beq     @cr
+        cmp     #$20
+        bcc     @done                     ; other control: emit unchanged
+        ; printable: delayed-wrap check
+        ldy     more_col
+        cpy     more_width
+        bne     @bump
+        ; col == width: emitting this byte triggers the wrap, landing
+        ; at col 0 of new row with cursor at col 1. Pause BEFORE the
+        ; emit: the prompt itself triggers the same wrap and ends up
+        ; on the new row, then erase restores cursor to col 0 of new
+        ; row, then the wrap byte emits there.
+        jsr     pager_maybe_pause
+        dec     more_rows_left
+        ldy     #1
+        sty     more_col
+        bra     @done
+@bump:
+        iny
+        sty     more_col
+        bra     @done
+
+@cr:
+        stz     more_col
+        bra     @done
+
+@lf:
+        ; LF advances cursor to a fresh row at col 0. We must emit it
+        ; BEFORE pausing, otherwise the prompt overlays line N's content
+        ; (CR has already moved the cursor back to col 0 of the line-N
+        ; row). After emit, cursor is on the new row and the prompt
+        ; lands cleanly there.
+        ply                               ; restore caller's Y first
+        jsr     chrout_fd                 ; emit LF (A=$0A preserved)
+        dec     more_rows_left
+        bne     @lf_ret
+        pha
+        jsr     more_prompt
+        lda     more_height
+        sec
+        sbc     #1
+        sta     more_rows_left
+        pla                               ; restore A=$0A for caller
+@lf_ret:
+        rts
+
+@done:
+        ply                               ; restore caller's Y before chrout_fd
+        jmp     chrout_fd                 ; tail-call (chrout_fd preserves A/X/Y)
+
+; ------------------------------------------------------------
+; pager_maybe_pause — if more_rows_left == 0, emit the --More--
+; prompt and re-prime the budget. Preserves A across the call
+; (callers depend on it: chrout_pager pauses *before* emitting
+; the wrap-causing byte).
+; ------------------------------------------------------------
+pager_maybe_pause:
+        ldy     more_rows_left
+        bne     @ret
+        pha
+        jsr     more_prompt
+        lda     more_height
+        sec
+        sbc     #1
+        sta     more_rows_left
+        pla
+@ret:   rts
+
+; ------------------------------------------------------------
+; more_prompt — emit "--More--" to tty, wait for a key, eat any
+; ESC[…] / ESCO… sequence so arrow-key presses don't leak into
+; the next OK prompt, and handle q/Q/Ctrl-C as ?BREAK. On
+; dismissal, erase the prompt with BS×8 SP×8 BS×8 so following
+; output lands cleanly.
+;
+; Overlay bytes go through chrout_fd directly (NOT CHROUT), so
+; they bypass the pager hook and don't re-enter the column
+; tracker.
+; ------------------------------------------------------------
+more_prompt:
+        ldx     #0
+@emit:  lda     more_prompt_str,x
+        beq     @wait_first
+        jsr     chrout_fd
+        inx
+        bra     @emit
+
+@wait_first:
+        bit     RIA_IRQ                   ; SIGINT latched while scrolling?
+        bvs     @break
+        jsr     GETIN
+        beq     @wait_first
+        cmp     #$03                      ; Ctrl-C byte from tty:
+        beq     @break
+        cmp     #'q'
+        beq     @break
+        cmp     #'Q'
+        beq     @break
+        cmp     #$1B                      ; ESC → eat sequence
+        bne     @erase
+
+        ; First byte after ESC: bounded poll (Y wraps to 0 after
+        ; 256 iters) so a bare ESC keypress doesn't hang.
+        ldy     #$00
+@esc1:  jsr     GETIN
+        bne     @esc1_got
+        dey
+        bne     @esc1
+        bra     @erase                    ; bare ESC: dismiss
+@esc1_got:
+        cmp     #'['
+        beq     @csi
+        cmp     #'O'
+        bne     @erase                    ; ESC<other>: dismiss
+        ; fall into @csi for SS3-style (ESC O x) sequences
+@csi:
+        ldy     #$00
+@csi_l: jsr     GETIN
+        beq     @csi_no
+        cmp     #$40                      ; CSI final byte is $40..$7E
+        bcc     @csi_l
+        cmp     #$7F
+        bcs     @csi_l
+        bra     @erase
+@csi_no:
+        dey
+        bne     @csi_l
+
+@erase:
+        ldx     #0
+@er:    lda     more_erase_str,x
+        beq     @done
+        jsr     chrout_fd
+        inx
+        bra     @er
+@done:  rts
+
+@break:
+        jsr     lsav_abort
+        jsr     chrout_vec_reset
+        lda     #$00                      ; Z=1 for STOP entry (same reason
+                                          ; as ISCNTC; chrout_vec_reset left
+                                          ; Z=0 via lda #>chrout_fd).
+        sec                               ; C=1 for STOP entry
+        jmp     STOP

@@ -51,7 +51,6 @@ COLD_START:
         stz Z14
         stz POSX
         stz lsav_fd
-        stz chrout_ptr+1      ; non-zero hi byte = chrout-to-buffer mode
         stz auto_run          ; auto-load/RUN state machine (see loadsave.s)
         ldx #TEMPST
         stx TEMPPT
