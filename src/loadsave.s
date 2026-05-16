@@ -189,8 +189,8 @@ lsav_load_chrin:
         lda     #RIA_OP_READ_XSTACK
         sta     RIA_OP
         jsr     RIA_SPIN
-        cpx     #$FF                   ; errno → surface as bad data
-        beq     @read_err              ; rather than silent EOF
+        bmi     @read_err              ; failure → surface as bad data
+                                       ; rather than silent EOF
         cmp     #$01
         bne     @eof
         lda     RIA_XSTACK             ; pop the byte

@@ -275,8 +275,7 @@ ria_filin:
         lda     #RIA_OP_READ_XSTACK
         sta     RIA_OP
         jsr     RIA_SPIN
-        cpx     #$FF                    ; errno → EOF
-        beq     @eof
+        bmi     @eof                    ; failure → EOF
         cmp     #$01
         bne     @eof                    ; short read → EOF
         lda     RIA_XSTACK              ; pop the byte

@@ -1,6 +1,8 @@
-; chrout_buf borrows TEMP1 as its INBUF write offset. Tab completion
-; is mutually exclusive with the other TEMP1 users (LOAD via getln_vec,
-; FP scratch via TEMP1X), so no overlap.
+; chrout_buf borrows TEMP1 as its INBUF write offset. Other TEMP1
+; users are LOAD's per-line byte counter (loadsave.s) and FP, whose
+; 5-byte scratch starts at TEMP1 and lives through TEMP1X. Tab
+; completion only runs inside CHRIN's input wait — never overlaps
+; with LOAD (OK-prompt only) or FP (interpretation only).
 inbuf_off = TEMP1
 
 .segment "EXTRA"
@@ -20,7 +22,7 @@ inbuf_off = TEMP1
 ;   In:  A = O_* flags. Filename bytes already pushed to RIA_XSTACK
 ;        in reverse order; trailing 0 short-stacks for free.
 ;   Out: A/X = SPIN return (kernel fd / hi byte).
-;        C clear on success, C set on errno (X = $FF).
+;        C clear on success, C set on failure (rc<0).
 ;   Side effect: consumes the pushed filename either way.
 ; ------------------------------------------------------------
 ria_open:
@@ -28,17 +30,16 @@ ria_open:
         lda     #RIA_OP_OPEN
         sta     RIA_OP
         jsr     RIA_SPIN
-        cpx     #$FF
-        bne     :+
-        sec
+        bmi     :+
+        clc
         rts
-:       clc
+:       sec
         rts
 
 ; ------------------------------------------------------------
 ; ria_close
 ;   In:  A = kernel fd.
-;   Out: SPIN return; A = bytes-related result, X = errno indicator.
+;   Out: A/X = SPIN return (X<0 on failure).
 ;   tty:/con: are no-ops in the OS so closing them is harmless.
 ; ------------------------------------------------------------
 ria_close:
@@ -87,8 +88,6 @@ ria_init_io:
         sta __LFTAB_START__,x
         dex
         bpl @wipe_lftab
-        stz in_fd
-        stz out_fd
         stz lsav_fd
 
         lda #':'
@@ -156,8 +155,7 @@ chrout_fd:
         lda #RIA_OP_WRITE_XSTACK
         sta RIA_OP
         jsr RIA_SPIN
-        cpx #$FF                  ; X=$FF on errno (write failed)
-        beq @write_err
+        bmi @write_err            ; rc<0 on failure
         lda RIA_A                 ; bytes_written, low byte
         cmp #1
         bcc @write_fd             ; partial write — re-push, retry
@@ -167,15 +165,16 @@ chrout_fd:
         rts
 
 @write_err:
-        ; tty: write errors are unrecoverable — ERROR's own message
+        ; tty: write failures are unrecoverable — ERROR's own message
         ; would just re-enter CHROUT — so eat them. Non-tty out_fd
         ; means either SAVE redirected to a file (disk full mid-LIST)
-        ; or CHKOUT redirected to a user PRINT# fd; either way drain
-        ; the partial WRITE_XSTACK op and route through ERROR. Its
-        ; lsav_panic prologue restores out_fd to tty and tears down
-        ; any active LOAD/SAVE state, idempotent when neither is
-        ; active — so PRINT# write errors get the right teardown
-        ; without a spurious close on lsav_fd=0.
+        ; or CHKOUT redirected to a user PRINT# fd; either way route
+        ; through ERROR. lsav_panic prologue restores out_fd to tty
+        ; and tears down any active LOAD/SAVE state, idempotent when
+        ; neither is active — so PRINT# write errors get the right
+        ; teardown without a spurious close on lsav_fd=0.
+        ; ria_zxstack on a failed op is unneeded (OS already drained)
+        ; but harmless; kept here for explicitness.
         lda out_fd
         cmp tty_fd
         beq @write_drop
@@ -335,8 +334,7 @@ ria_tab_completion:
         beq @done
         sec
         sbc #2                    ; -2 for CR LF
-        tay                       ; Y = listing length, expected ≥ 1
-        beq @done                 ; defensive: nothing to push
+        tay                       ; Y = listing length
 
         ; --- Phase D: push poke to xstack. ---
         ; LIFO: listing in reverse, then the ANSI clear-line prefix
@@ -485,8 +483,9 @@ CHRIN:
 ; ------------------------------------------------------------
 ISCNTC:
         bit RIA_IRQ               ; V = bit 6 (sigint latch); read clears
-        bvc @done
-        lda #$FF                  ; drain tty: of the user's Ctrl-C
+        bvs :+
+        rts
+:       lda #$FF                  ; drain tty: of the user's Ctrl-C
         sta RIA_XSTACK            ; count lo = 255; hi short-stacks
         lda tty_fd
         sta RIA_A
@@ -494,6 +493,9 @@ ISCNTC:
         sta RIA_OP
         jsr RIA_SPIN
         ria_zxstack
+        ; fall through to break_to_stop
+
+break_to_stop:
         jsr lsav_abort            ; restore I/O if SAVE was mid-LIST
         jsr chrout_vec_reset      ; restore CHROUT dispatch (pager/tab)
         lda #$00                  ; Z=1 for STOP entry (the jsr above
@@ -502,8 +504,6 @@ ISCNTC:
                                   ; short-circuit out of the BREAK path).
         sec                       ; C=1 for STOP entry
         jmp STOP
-@done:
-        rts
 
 ; ------------------------------------------------------------
 ; LINPRTNS — like upstream LINPRT but skips the leading
@@ -754,9 +754,4 @@ more_prompt:
 @done:  rts
 
 @break:
-        jsr     lsav_abort
-        jsr     chrout_vec_reset
-        lda     #$00                      ; Z=1 for STOP entry (chrout_vec_reset
-                                          ; left Z=0 via lda #>chrout_fd)
-        sec                               ; C=1 for STOP entry
-        jmp     STOP
+        jmp     break_to_stop
