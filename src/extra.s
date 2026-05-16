@@ -700,15 +700,21 @@ chrout_pager:
 
 
 ; ------------------------------------------------------------
-; more_prompt — emit "--More--" to tty, wait for a key, eat any
-; ESC[…] / ESCO… sequence so arrow-key presses don't leak into
-; the next OK prompt, and handle q/Q/Ctrl-C as ?BREAK. On
-; dismissal, erase the prompt with BS×8 SP×8 BS×8 so following
-; output lands cleanly.
+; more_prompt — emit "--More--" to tty, then run the pico-firmware
+; monitor's 3-state escape-sequence eater (mon.c) — WAIT →
+; WAIT_ESC → WAIT_CSI → END — block-waiting on GETIN at every
+; transition. q/Q/Ctrl-C in WAIT trigger ?BREAK; inside
+; WAIT_ESC/WAIT_CSI they're just sequence bytes. On dismissal,
+; erase the prompt with BS×8 SP×8 BS×8.
 ;
-; Overlay bytes go through chrout_fd directly (NOT CHROUT), so
-; they bypass the pager hook and don't re-enter the column
-; tracker.
+; Block-wait (not bounded poll) is deliberate: terminals over
+; slow links can send the bytes of an escape sequence seconds
+; apart, and a poll budget drops late arrivals into the next OK
+; prompt. The tradeoff is that bare Esc parks the pager in
+; WAIT_ESC until the user presses another key.
+;
+; Overlay bytes (--More--, BS/SP/BS erase) go through chrout_fd
+; directly so they bypass chrout_pager.
 ; ------------------------------------------------------------
 more_prompt:
         ldx     #0
@@ -718,46 +724,36 @@ more_prompt:
         inx
         bra     @emit
 
-@wait_first:
+@wait_first:                              ; state: WAIT
         bit     RIA_IRQ                   ; SIGINT latched while scrolling?
         bvs     @break
         jsr     GETIN
-        beq     @wait_first
+        beq     @wait_first               ; block-spin until a byte arrives
         cmp     #$03                      ; Ctrl-C byte from tty:
         beq     @break
         cmp     #'q'
         beq     @break
         cmp     #'Q'
         beq     @break
-        cmp     #$1B                      ; ESC → eat sequence
-        bne     @erase
+        cmp     #$1B                      ; ESC → WAIT_ESC
+        bne     @erase                    ; non-ESC → END
 
-        ; First byte after ESC: bounded poll (Y wraps to 0 after
-        ; 256 iters) so a bare ESC keypress doesn't hang.
-        ldy     #$00
-@esc1:  jsr     GETIN
-        bne     @esc1_got
-        dey
-        bne     @esc1
-        bra     @erase                    ; bare ESC: dismiss
-@esc1_got:
+@wait_esc:                                ; state: WAIT_ESC
+        jsr     GETIN
+        beq     @wait_esc                 ; block-spin for next byte
         cmp     #'['
-        beq     @csi
+        beq     @wait_csi
         cmp     #'O'
-        bne     @erase                    ; ESC<other>: dismiss
-        ; fall into @csi for SS3-style (ESC O x) sequences
-@csi:
-        ldy     #$00
-@csi_l: jsr     GETIN
-        beq     @csi_no
-        cmp     #$40                      ; CSI final byte is $40..$7E
-        bcc     @csi_l
+        bne     @erase                    ; non-CSI-intro → END
+
+@wait_csi:                                ; state: WAIT_CSI
+        jsr     GETIN
+        beq     @wait_csi                 ; block-spin for next byte
+        cmp     #$40
+        bcc     @wait_csi                 ; <$40: param/intermediate byte
         cmp     #$7F
-        bcs     @csi_l
-        bra     @erase
-@csi_no:
-        dey
-        bne     @csi_l
+        bcs     @wait_csi                 ; ≥$7F: not a CSI final byte
+        ; $40..$7E → CSI final → END, fall through to erase
 
 @erase:
         ldx     #0
@@ -771,8 +767,7 @@ more_prompt:
 @break:
         jsr     lsav_abort
         jsr     chrout_vec_reset
-        lda     #$00                      ; Z=1 for STOP entry (same reason
-                                          ; as ISCNTC; chrout_vec_reset left
-                                          ; Z=0 via lda #>chrout_fd).
+        lda     #$00                      ; Z=1 for STOP entry (chrout_vec_reset
+                                          ; left Z=0 via lda #>chrout_fd)
         sec                               ; C=1 for STOP entry
         jmp     STOP
