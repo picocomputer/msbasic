@@ -644,7 +644,9 @@ chrout_pager:
         pha                               ; preserve A across pause
         dec     more_rows_left
         bne     @wrap_emit
-        jsr     more_prompt
+        phx                               ; more_prompt clobbers X via its
+        jsr     more_prompt               ; @emit/@erase ldx-loops; STRPRT
+        plx                               ; uses X as its own loop counter.
         lda     more_height
         sec
         sbc     #1
@@ -674,7 +676,9 @@ chrout_pager:
         pha                               ; preserve A across pause
         dec     more_rows_left
         bne     @lf_ret
-        jsr     more_prompt
+        phx                               ; more_prompt clobbers X via its
+        jsr     more_prompt               ; @emit/@erase ldx-loops; STRPRT
+        plx                               ; uses X as its own loop counter.
         lda     more_height
         sec
         sbc     #1

@@ -71,6 +71,11 @@ RESTART:
         lda     #<QT_OK
         ldy     #>QT_OK
         jsr     STROUT
+        jsr     chrout_vec_reset        ; disarms LIST's --More-- pager AFTER
+                                        ; QT_OK so its CR LFs are counted
+                                        ; (rather than scrolling unwatched).
+                                        ; Idempotent when the pager wasn't
+                                        ; armed (non-LIST RESTART paths).
 L2351:
         jsr     INLIN
         stx     TXTPTR
@@ -618,12 +623,11 @@ L25CE:
                                         ; which is one-shot per LIST and lives
                                         ; in the L25A6 entry prologue.
 L25E5:
-        jsr     chrout_vec_reset        ; pager teardown (idempotent if pager
-                                        ; wasn't armed). Tab completion's
-                                        ; L25A6X call also lands here, but its
-                                        ; post-L25A6X work touches xstack
-                                        ; directly (not CHROUT), so the early
-                                        ; reset doesn't break it.
+        ; Pager teardown happens in RESTART (after QT_OK is printed)
+        ; so QT_OK's CR LFs are counted by the pager. Tab completion's
+        ; L25A6X call also lands here and manages chrout_vec on its
+        ; own (no jsr chrout_vec_reset needed in this path).
+        ; jsr     chrout_vec_reset
         rts
 L25E8:
         bpl     L25CE
