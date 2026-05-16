@@ -161,6 +161,6 @@ OUTDO:
         bcc outdo_emit            ; other control chars: emit, no inc
         inc POSX
 outdo_emit:
-        jmp CHROUT               ; tail call
+        jmp (chrout_vec)          ; tail call
 outdo_done:
         rts

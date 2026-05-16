@@ -139,17 +139,6 @@ ria_init_io:
         rts
 
 ; ------------------------------------------------------------
-; CHROUT
-;   Dispatch trampoline. The default chrout_vec is chrout_fd (write
-;   A to out_fd: tty: by default, file fd during SAVE). Tab completion
-;   swaps in chrout_buf to capture LIST output into INBUF; the LIST
-;   --More-- pager swaps in chrout_pager to track column/budget and
-;   pause mid-LIST. Every target preserves A/X/Y.
-; ------------------------------------------------------------
-CHROUT:
-        jmp (chrout_vec)
-
-; ------------------------------------------------------------
 ; chrout_fd — default CHROUT target.
 ;   Writes A to out_fd. Loops on partial writes (op may return
 ;   bytes_written < 1 while the OS-side tx queue drains).

@@ -39,9 +39,9 @@ FORPNT:        .res 2
 LASTOP:        .res 2
 TXPSV:         .res 2
 CPRTYP:        .res 1
-FNCNAM:
 TEMP1:         .res 1
 TEMP2:         .res 1
+FNCNAM:
 TEMP3:         .res 2
 DSCPTR:        .res 3
 DSCLEN:        .res 2
@@ -77,13 +77,13 @@ lsav_fd:       .res 1   ; SAVE/LOAD active fd
 getln_vec:     .res 2   ; GETLN indirection; CHRIN by default, swapped by LOAD
 chrout_vec:    .res 2   ; CHROUT dispatch target: chrout_fd (default), chrout_buf
                         ; (tab completion), or chrout_pager (LIST --More-- hook).
+more_height:   .res 1   ; LIST pager: terminal rows
+more_width:    .res 1   ; LIST pager: terminal cols
+more_rows_left:.res 1   ; LIST pager: rows of headroom before next --More--
+more_col:      .res 1   ; LIST pager: tracked column 0..more_width
 auto_run:      .res 1   ; cold-boot auto-load + RUN state machine
                         ;   0   = idle (normal LOAD)
                         ;   1   = auto-load mode (file read in progress)
                         ;   2..4 = post-EOF emitting "UN\r" through INLIN
                         ;          (the 'R' is emitted directly from
                         ;          the EOF→start_auto_run handoff)
-more_height:   .res 1   ; LIST pager: terminal rows (held while armed).
-more_width:    .res 1   ; LIST pager: terminal cols.
-more_rows_left:.res 1   ; LIST pager: rows of headroom before next --More--.
-more_col:      .res 1   ; LIST pager: tracked column 0..more_width.
