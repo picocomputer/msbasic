@@ -1,3 +1,8 @@
+; chrout_buf borrows TEMP1 as its INBUF write offset. Tab completion
+; is mutually exclusive with the other TEMP1 users (LOAD via getln_vec,
+; FP scratch via TEMP1X), so no overlap.
+inbuf_off = TEMP1
+
 .segment "EXTRA"
 
 ;---------------------------------------------
@@ -197,12 +202,11 @@ chrout_fd:
 
 ; ------------------------------------------------------------
 ; chrout_buf — tab completion's CHROUT target. Appends A to
-; INBUF at offset inbuf_off, saturating at $FF so a >256-char
-; detokenized line (many ?→PRINT expansions) can't walk past
-; INBUF into the RIA register page at $FF00. ria_tab_completion
-; checks inbuf_off == $FF after L25A6X to detect overflow and
-; abandon the completion.
-;   Preserves A, X, Y.
+; INBUF[inbuf_off], saturating at $FF so a >256-char detokenized
+; line can't walk past INBUF into the RIA register page at $FF00;
+; ria_tab_completion checks inbuf_off == $FF after L25A6X to
+; detect overflow and abandon the completion.
+; Preserves A, X, Y.
 ; ------------------------------------------------------------
 chrout_buf:
         phy
@@ -335,9 +339,8 @@ ria_tab_completion:
         sta chrout_vec+1
         jsr L25A6X
         jsr chrout_vec_reset      ; back to default chrout_fd
-        ; If chrout_buf saturated at $FF the line overflowed INBUF
-        ; (>256 chars detokenized) — pushing a truncated listing
-        ; would corrupt the user's edit buffer, so bail.
+        ; chrout_buf saturates at $FF on overflow — pushing a
+        ; truncated listing would corrupt the edit buffer, so bail.
         lda inbuf_off
         cmp #$FF
         beq @done
@@ -374,10 +377,6 @@ ria_tab_completion:
 
 esc_clear_line: .byte $1B, '[', 'H', $1B, '[', '2', '5', '6', 'P'
 esc_clear_line_end:
-
-inbuf_off:      .byte 0           ; chrout_buf write offset into INBUF (0..$FF;
-                                  ; $FF = saturated/overflow). Lives outside
-                                  ; ZP since only tab completion touches it.
 
 more_prompt_str: .byte "--More--", 0
 more_erase_str:  .byte $08, $08, $08, $08, $08, $08, $08, $08

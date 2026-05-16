@@ -1,7 +1,9 @@
 ; Tokenize/LIST scratch — aliases on FP scratch zp slots.
 ; TEMP3 (2 bytes) and TEMP2 (1 byte) are FP-only (float.s, trig.s),
-; never touched during PARSE_INPUT_LINE or LIST. TEMP1 is reserved
-; for lsav_load_chrin's per-line counter and must NOT be aliased.
+; never touched during PARSE_INPUT_LINE or LIST. TEMP1 is shared
+; among mutually-exclusive users (lsav_load_chrin's per-line
+; counter, chrout_buf's INBUF offset during tab completion, FP
+; scratch via TEMP1X) — see extra.s for the inbuf_off alias.
 TOKBASE       = TEMP3
 TOKBASE_TOKEN = TEMP2
 
