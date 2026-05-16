@@ -645,16 +645,26 @@ chrout_pager:
         ldy     more_col
         cpy     more_width
         bne     @bump
-        ; col == width: emitting this byte triggers the wrap, landing
-        ; at col 0 of new row with cursor at col 1. Pause BEFORE the
-        ; emit: the prompt itself triggers the same wrap and ends up
-        ; on the new row, then erase restores cursor to col 0 of new
-        ; row, then the wrap byte emits there.
-        jsr     pager_maybe_pause
-        dec     more_rows_left
-        ldy     #1
+        ; col == width: emitting this byte causes a wrap. We prompt
+        ; BEFORE the emit on this path — the prompt's own first byte
+        ; triggers the same wrap, then erase brings the cursor back
+        ; to col 0 of the new row, then the byte emits there. Going
+        ; emit-first instead would leave the wrap byte visible at col
+        ; 0 with "--More--" tacked on at cols 1..8 (the bug).
+        ldy     #1                        ; cursor will be at col 1 post-emit
         sty     more_col
-        bra     @done
+        pha                               ; preserve A across pause
+        dec     more_rows_left
+        bne     @wrap_emit
+        jsr     more_prompt
+        lda     more_height
+        sec
+        sbc     #1
+        sta     more_rows_left
+@wrap_emit:
+        pla
+        ply
+        jmp     chrout_fd                 ; emit byte (post-prompt if paused)
 @bump:
         iny
         sty     more_col
@@ -665,46 +675,30 @@ chrout_pager:
         bra     @done
 
 @lf:
-        ; LF advances cursor to a fresh row at col 0. We must emit it
-        ; BEFORE pausing, otherwise the prompt overlays line N's content
-        ; (CR has already moved the cursor back to col 0 of the line-N
-        ; row). After emit, cursor is on the new row and the prompt
-        ; lands cleanly there.
-        ply                               ; restore caller's Y first
-        jsr     chrout_fd                 ; emit LF (A=$0A preserved)
+        ; LF: emit it FIRST so the cursor lands on the fresh row,
+        ; THEN prompt. Prompting before LF would overlay line N's
+        ; first 8 chars (CR has already pulled the cursor back to
+        ; col 0 of N's row). Dec-then-bne (matching wrap) keeps
+        ; more_rows_left in {1..height-1}: never sits at 0 between
+        ; events, so the dec never underflows.
+        ply
+        jsr     chrout_fd                 ; emit LF (cursor → new row)
+        pha                               ; preserve A across pause
         dec     more_rows_left
         bne     @lf_ret
-        pha
         jsr     more_prompt
         lda     more_height
         sec
         sbc     #1
         sta     more_rows_left
-        pla                               ; restore A=$0A for caller
 @lf_ret:
+        pla
         rts
 
 @done:
         ply                               ; restore caller's Y before chrout_fd
         jmp     chrout_fd                 ; tail-call (chrout_fd preserves A/X/Y)
 
-; ------------------------------------------------------------
-; pager_maybe_pause — if more_rows_left == 0, emit the --More--
-; prompt and re-prime the budget. Preserves A across the call
-; (callers depend on it: chrout_pager pauses *before* emitting
-; the wrap-causing byte).
-; ------------------------------------------------------------
-pager_maybe_pause:
-        ldy     more_rows_left
-        bne     @ret
-        pha
-        jsr     more_prompt
-        lda     more_height
-        sec
-        sbc     #1
-        sta     more_rows_left
-        pla
-@ret:   rts
 
 ; ------------------------------------------------------------
 ; more_prompt — emit "--More--" to tty, wait for a key, eat any
