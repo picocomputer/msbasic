@@ -594,32 +594,35 @@ chrout_vec_reset:
 
 ; ------------------------------------------------------------
 ; chrout_pager — chrout_vec target while the LIST pager is
-; armed. Intercepts every byte at the CHROUT layer, tracks the
-; pager's view of the cursor, pauses on row-advance events
-; that would push content past the bottom of the screen, then
-; tail-calls chrout_fd to actually emit the byte.
+; armed. One rule: on each byte, if the byte would print a
+; character or a newline AND more_rows_left == 0, prompt with
+; more_prompt and reset more_rows_left; then process the byte
+; and tail-call chrout_fd to emit it.
 ;
-; Column model: delayed-wrap (xterm/vt100). After writing the
-; W-th char, the cursor sits in a "pending wrap" cell at col W;
-; the wrap fires only when the next printable arrives, which
-; goes to col 1 of the new row.
+; "Would print a character or a newline" = LF ($0A) or
+; printable (≥ $20). CR ($0D) and other controls pass through
+; without triggering the check — they don't land on a line.
 ;
-; Per-byte:
-;   $0A (LF)        — row advance; pause-if-budget-zero, dec budget.
-;   $0D (CR)        — col := 0.
-;   < $20 (other)   — passthru. CRUNCH drops $01..$1F inside
-;                     string/REM literals, so LIST output is
-;                     control-char-free in practice.
-;   ≥ $20 printable — if col == width, this byte wraps:
-;                     pause-if-budget-zero, dec budget, col := 1.
-;                     Else col := col + 1.
+; Per-byte processing (after the check):
+;   $0A (LF)        — emit, dec more_rows_left.
+;   $0D (CR)        — more_col := 0, emit.
+;   < $20 (other)   — emit, no tracking. CRUNCH drops $01..$1F
+;                     inside string/REM literals so LIST output
+;                     is control-char-free in practice.
+;   ≥ $20 printable — delayed-wrap column model (xterm/vt100):
+;                     if more_col == more_width, emitting this
+;                     byte wraps to col 1 of the next row — emit,
+;                     more_col := 1, dec more_rows_left. Else
+;                     emit, more_col++.
 ;
-; A/X/Y preserved (matches chrout_fd's contract; chrout_pager
-; tail-calls chrout_fd so the contract holds end-to-end).
-; Y is saved on entry / restored on exit because the body
-; clobbers it for column tracking, and callers like STROUT
-; iterate (INDEX),y across successive CHROUT calls — they
-; rely on Y surviving the trip through CHROUT.
+; The MORE-check guarantees more_rows_left > 0 by the time we
+; reach the dec, so the dec can never underflow.
+;
+; A/X/Y preserved (matches chrout_fd's contract). Y is saved
+; on entry / restored on exit because column tracking clobbers
+; it. X is preserved across more_prompt (more_prompt's own
+; ldx/inx loops clobber X, and STRPRT uses X as its own loop
+; counter).
 ; ------------------------------------------------------------
 chrout_pager:
         phy
@@ -628,33 +631,29 @@ chrout_pager:
         cmp     #$0D
         beq     @cr
         cmp     #$20
-        bcc     @done                     ; other control: emit unchanged
-        ; printable: delayed-wrap check
-        ldy     more_col
-        cpy     more_width
-        bne     @bump
-        ; col == width: emitting this byte causes a wrap. We prompt
-        ; BEFORE the emit on this path — the prompt's own first byte
-        ; triggers the same wrap, then erase brings the cursor back
-        ; to col 0 of the new row, then the byte emits there. Going
-        ; emit-first instead would leave the wrap byte visible at col
-        ; 0 with "--More--" tacked on at cols 1..8 (the bug).
-        ldy     #1                        ; cursor will be at col 1 post-emit
-        sty     more_col
-        pha                               ; preserve A across pause
-        dec     more_rows_left
-        bne     @wrap_emit
-        phx                               ; more_prompt clobbers X via its
-        jsr     more_prompt               ; @emit/@erase ldx-loops; STRPRT
-        plx                               ; uses X as its own loop counter.
+        bcc     @done                     ; other control: pass through
+
+        ; printable: MORE-check, then column tracking.
+        ldy     more_rows_left
+        bne     @printable
+        pha                               ; save byte across more_prompt
+        phx                               ; more_prompt clobbers X
+        jsr     more_prompt
+        plx
         lda     more_height
         sec
         sbc     #1
         sta     more_rows_left
-@wrap_emit:
-        pla
-        ply
-        jmp     chrout_fd                 ; emit byte (post-prompt if paused)
+        pla                               ; restore byte (lda above clobbered A)
+@printable:
+        ldy     more_col
+        cpy     more_width
+        bne     @bump
+        ; col == width: this byte wraps to col 1 of the next row.
+        ldy     #1
+        sty     more_col
+        dec     more_rows_left            ; safe: >0 after MORE-check
+        bra     @done
 @bump:
         iny
         sty     more_col
@@ -665,31 +664,24 @@ chrout_pager:
         bra     @done
 
 @lf:
-        ; LF: emit it FIRST so the cursor lands on the fresh row,
-        ; THEN prompt. Prompting before LF would overlay line N's
-        ; first 8 chars (CR has already pulled the cursor back to
-        ; col 0 of N's row). Dec-then-bne (matching wrap) keeps
-        ; more_rows_left in {1..height-1}: never sits at 0 between
-        ; events, so the dec never underflows.
-        ply
-        jsr     chrout_fd                 ; emit LF (cursor → new row)
-        pha                               ; preserve A across pause
-        dec     more_rows_left
-        bne     @lf_ret
-        phx                               ; more_prompt clobbers X via its
-        jsr     more_prompt               ; @emit/@erase ldx-loops; STRPRT
-        plx                               ; uses X as its own loop counter.
+        ldy     more_rows_left
+        bne     @lf_emit
+        pha
+        phx
+        jsr     more_prompt
+        plx
         lda     more_height
         sec
         sbc     #1
         sta     more_rows_left
-@lf_ret:
         pla
-        rts
+@lf_emit:
+        dec     more_rows_left            ; safe: >0 after MORE-check
+        ; fall through
 
 @done:
-        ply                               ; restore caller's Y before chrout_fd
-        jmp     chrout_fd                 ; tail-call (chrout_fd preserves A/X/Y)
+        ply                               ; restore caller's Y
+        jmp     chrout_fd                 ; tail-call (preserves A/X/Y)
 
 
 ; ------------------------------------------------------------
