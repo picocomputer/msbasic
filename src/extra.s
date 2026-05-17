@@ -594,35 +594,35 @@ chrout_vec_reset:
 
 ; ------------------------------------------------------------
 ; chrout_pager — chrout_vec target while the LIST pager is
-; armed. One rule: on each byte, if the byte would print a
-; character or a newline AND more_rows_left == 0, prompt with
-; more_prompt and reset more_rows_left; then process the byte
-; and tail-call chrout_fd to emit it.
+; armed. Tracks the pager's cursor, fires more_prompt when a
+; byte would land on an overflow row, then tail-calls chrout_fd
+; to actually emit the byte.
 ;
-; "Would print a character or a newline" = LF ($0A) or
-; printable (≥ $20). CR ($0D) and other controls pass through
-; without triggering the check — they don't land on a line.
+; Rule per byte:
+;   $0A (LF)        — row-advance (invisible). MORE-check on
+;                     entry (rows_left == 0 means a prior advance
+;                     already pushed us to overflow); then emit,
+;                     dec rows_left.
+;   $0D (CR)        — more_col := 0, emit. No row tracking.
+;   < $20 (other)   — emit, no tracking.
+;   ≥ $20 printable — if more_col == more_width, this byte wraps
+;                     to col 1 of the NEXT row, so dec rows_left
+;                     first (the wrap IS the row-advance), then
+;                     MORE-check the new state — if the wrap put
+;                     this char on an overflow row, MORE before
+;                     it emits. Else just inc more_col.
 ;
-; Per-byte processing (after the check):
-;   $0A (LF)        — emit, dec more_rows_left.
-;   $0D (CR)        — more_col := 0, emit.
-;   < $20 (other)   — emit, no tracking. CRUNCH drops $01..$1F
-;                     inside string/REM literals so LIST output
-;                     is control-char-free in practice.
-;   ≥ $20 printable — delayed-wrap column model (xterm/vt100):
-;                     if more_col == more_width, emitting this
-;                     byte wraps to col 1 of the next row — emit,
-;                     more_col := 1, dec more_rows_left. Else
-;                     emit, more_col++.
+; LF's MORE-check is lazy (on entry) because the LF itself
+; doesn't print visible content; the prompt fires on the first
+; printable/LF that follows. Wrap's MORE-check is post-dec
+; because the wrap char IS the first visible char of the new
+; row — we have to decide overflow before emitting it, not
+; after.
 ;
-; The MORE-check guarantees more_rows_left > 0 by the time we
-; reach the dec, so the dec can never underflow.
-;
-; A/X/Y preserved (matches chrout_fd's contract). Y is saved
-; on entry / restored on exit because column tracking clobbers
-; it. X is preserved across more_prompt (more_prompt's own
-; ldx/inx loops clobber X, and STRPRT uses X as its own loop
-; counter).
+; A/X/Y preserved (matches chrout_fd's contract). Y saved on
+; entry / restored on exit because column tracking clobbers it.
+; X is preserved across more_prompt (more_prompt's own ldx/inx
+; loops clobber X, and STRPRT uses X as its own loop counter).
 ; ------------------------------------------------------------
 chrout_pager:
         phy
@@ -633,9 +633,39 @@ chrout_pager:
         cmp     #$20
         bcc     @done                     ; other control: pass through
 
-        ; printable: MORE-check, then column tracking.
+        ; printable: decide wrap vs bump from current column.
+        ldy     more_col
+        cpy     more_width
+        beq     @wrap
+        ; col < width: normal printable. MORE-check on entry —
+        ; if a prior LF left rows_left == 0, this char is the
+        ; first printable of an overflow row.
         ldy     more_rows_left
-        bne     @printable
+        bne     @bump
+        pha
+        phx
+        jsr     more_prompt
+        plx
+        lda     more_height
+        sec
+        sbc     #1
+        sta     more_rows_left
+        pla
+@bump:
+        inc     more_col
+        bra     @done
+
+@wrap:
+        ; col == width: this byte wraps to col 1 of the next row.
+        ; Dec rows_left first (the wrap is the row-advance), then
+        ; MORE-check the post-dec state so the wrap char gets the
+        ; prompt if it would land on overflow.
+        ldy     more_rows_left
+        beq     @wrap_check               ; already 0: skip dec, don't underflow
+        dec     more_rows_left
+@wrap_check:
+        ldy     more_rows_left
+        bne     @wrap_emit
         pha                               ; save byte across more_prompt
         phx                               ; more_prompt clobbers X
         jsr     more_prompt
@@ -645,17 +675,8 @@ chrout_pager:
         sbc     #1
         sta     more_rows_left
         pla                               ; restore byte (lda above clobbered A)
-@printable:
-        ldy     more_col
-        cpy     more_width
-        bne     @bump
-        ; col == width: this byte wraps to col 1 of the next row.
-        ldy     #1
-        sty     more_col
-        dec     more_rows_left            ; safe: >0 after MORE-check
-        bra     @done
-@bump:
-        iny
+@wrap_emit:
+        ldy     #1                        ; use Y so A keeps the byte for emit
         sty     more_col
         bra     @done
 
