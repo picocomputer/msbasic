@@ -337,6 +337,8 @@ more_prompt:
         bvs     @break
         jsr     GETIN
         beq     @wait_first               ; block-spin until a byte arrives
+        cmp     #$0A                      ; n
+        beq     @wait_first
         cmp     #$03                      ; Ctrl-C byte from tty:
         beq     @break
         cmp     #'q'
@@ -715,11 +717,9 @@ CHRIN:
         sta RIA_OP
         jsr RIA_SPIN
 
-        ; Drain the released bytes off con: into xstack and toss
-        ; them. Without this drain, those bytes would leak into the
-        ; next OK-prompt INLIN as if the user typed them.
+        ; Drain con:
         lda #$FF
-        sta RIA_XSTACK            ; count lo = 255; hi short-stacks
+        sta RIA_XSTACK
         lda con_fd
         sta RIA_A
         lda #RIA_OP_READ_XSTACK

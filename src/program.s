@@ -427,11 +427,17 @@ L24DB:
         lda     #$7F
         bra     L24AA
 ; ---END OF LINE — reached via L24AC's beq when a $00 has been stored.
-; The terminator is already in place at INBUF[Y-5] (the L24AC sta that
-; triggered the beq); just reset TXTPTR to INBUF-1 for the next CHRGET.
+; The line terminator is in place at INBUF[Y-5]. Also stamp a $00 at
+; INBUF[Y-3] (A=0 on the beq path): NEWSTT's direct-mode lookahead
+; reads (TXTPTR),2 as the synthetic "next-line link high" byte and
+; needs to see $00 to fall back to RESTART. Without this store,
+; residual input bytes left in INBUF (e.g. 'T' at INBUF[3] after
+; "LIST" is tokenized to 2 bytes) drive NEWSTT into a phantom-line
+; path that SYNERRs with a garbage CURLIN.
 ; INBUF is page-aligned (assert in defines.s), so <(INBUF-1)=$FF wraps
 ; and we compensate with dec TXTPTR+1.
 L24EA:
+        sta     __INBUF_START__-3,y
         dec     TXTPTR+1
         lda     #<(__INBUF_START__-1)
         sta     TXTPTR
