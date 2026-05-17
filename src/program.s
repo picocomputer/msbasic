@@ -427,8 +427,11 @@ L24DB:
         lda     #$7F
         bra     L24AA
 ; ---END OF LINE — reached via L24AC's beq when a $00 has been stored.
+; The terminator is already in place at INBUF[Y-5] (the L24AC sta that
+; triggered the beq); just reset TXTPTR to INBUF-1 for the next CHRGET.
+; INBUF is page-aligned (assert in defines.s), so <(INBUF-1)=$FF wraps
+; and we compensate with dec TXTPTR+1.
 L24EA:
-        sta     __INBUF_START__-3,y
         dec     TXTPTR+1
         lda     #<(__INBUF_START__-1)
         sta     TXTPTR
@@ -575,7 +578,9 @@ L25A6:
                                         ; jsr L25A6X bypasses the arm and keeps
                                         ; chrout_vec pointed at chrout_buf.
                                         ; Matching disarm: chrout_vec_reset
-                                        ; at L25E5.
+                                        ; at RESTART (after QT_OK), so the
+                                        ; trailing CR/LF still flow through
+                                        ; the pager's row counter.
 L25A6X:
         ldy     #$01
         lda     (LOWTRX),y
