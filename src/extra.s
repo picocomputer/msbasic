@@ -673,9 +673,13 @@ esc_clear_line_end:
 ;   While waiting for the first byte (user still typing), polls two
 ;   sidechannels: RIA_ATTR_SIGINT for break (Ctrl-C at the OK prompt
 ;   or during INPUT), and RIA_OP_RLN_LASTKEY to catch a TAB and run
-;   line-number completion. Once con: starts releasing bytes, the
-;   read_xstack call succeeds on the first try (the line is queued
-;   end-to-end), so the side polls run only while the user is typing.
+;   line-number completion. LASTKEY pushes a "consumed" flag on top
+;   of the key bytes — true when the line editor already acted on the
+;   key (typing, arrows, backspace, etc.); we drop those so only keys
+;   the editor passed through (TAB) reach the completion path.
+;   Once con: starts releasing bytes, the read_xstack call succeeds
+;   on the first try (the line is queued end-to-end), so the side
+;   polls run only while the user is typing.
 ; ------------------------------------------------------------
 CHRIN:
         phx
@@ -699,11 +703,13 @@ CHRIN:
         lda #RIA_OP_RLN_LASTKEY
         sta RIA_OP
         jsr RIA_SPIN
-        cmp #1                    ; exactly one byte?
-        bne @drain                ; 0 or 2+ bytes — just drain
-        lda RIA_XSTACK            ; pop the one byte
+        cmp #1                    ; exactly one key byte? (TAB is 1-byte)
+        bne @drain                ; 0 or 2+ key bytes — just drain
+        lda RIA_XSTACK            ; pop consumed flag (pushed last → on top)
+        bne @drain                ; line editor already acted on it — ignore
+        lda RIA_XSTACK            ; pop the key byte
         cmp #$09                  ; TAB?
-        bne @wait
+        bne @wait                 ; xstack already empty here
         jsr ria_tab_completion
 @drain:
         ria_zxstack               ; idempotent: stz RIA_OP
