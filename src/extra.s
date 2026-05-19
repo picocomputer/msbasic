@@ -402,11 +402,14 @@ more_erase_str:  .byte $08, $08, $08, $08, $08, $08, $08, $08
 ;   $0D (CR)        — more_col := 0, emit. No row tracking.
 ;   < $20 (other)   — emit, no tracking.
 ;   ≥ $20 printable — if more_col == more_width, this byte wraps
-;                     to col 1 of the NEXT row, so dec rows_left
-;                     first (the wrap IS the row-advance), then
-;                     MORE-check the new state — if the wrap put
-;                     this char on an overflow row, MORE before
-;                     it emits. Else just inc more_col.
+;                     to col 1 of the NEXT row. Emit explicit
+;                     CR+LF first so terminals without auto-wrap
+;                     still see the break AND any MORE-prompt
+;                     lands at col 0 of the new row. Then dec
+;                     rows_left (the wrap IS the row-advance)
+;                     and MORE-check the new state — if the
+;                     wrap put this char on an overflow row,
+;                     MORE before it emits. Else just inc more_col.
 ;
 ; LF's MORE-check is lazy (on entry) because the LF itself
 ; doesn't print visible content; the prompt fires on the first
@@ -447,9 +450,19 @@ chrout_pager:
 
 @wrap:
         ; col == width: this byte wraps to col 1 of the next row.
-        ; Dec rows_left first (the wrap is the row-advance), then
-        ; MORE-check the post-dec state so the wrap char gets the
-        ; prompt if it would land on overflow.
+        ; Emit explicit CRLF first so the wrap is visible on
+        ; terminals without auto-wrap AND so any MORE-prompt
+        ; lands at col 0 of the new row instead of being
+        ; appended to the previous line. Then dec rows_left
+        ; (the wrap is the row-advance) and MORE-check the
+        ; post-dec state.
+        pha                               ; save the printable for @done's
+                                          ; tail-call to chrout_fd
+        lda     #$0D
+        jsr     chrout_fd
+        lda     #$0A
+        jsr     chrout_fd
+        pla
         ldy     more_rows_left
         beq     @wrap_check               ; already 0: skip dec, don't underflow
         dec     more_rows_left
