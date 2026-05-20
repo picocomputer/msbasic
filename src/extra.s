@@ -563,10 +563,12 @@ ria_tab_completion:
         lda #RIA_OP_RLN_PEEK
         sta RIA_OP
         jsr RIA_SPIN
+        lda RIA_XSTACK            ; discard cursor pos byte at top
 
         ; --- Phase B: parse digits off xstack into LINNUM. ---
         ; Pop top-down: chars come out in forward order, terminated
-        ; by 0. Non-digit, overflow, or empty buffer → abort.
+        ; by 0 (short-stacking past the buffer end). Non-digit,
+        ; overflow, or empty buffer → abort.
         stz LINNUM
         stz LINNUM+1
         ldy #$00                  ; digit count
