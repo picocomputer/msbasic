@@ -575,7 +575,8 @@ L2598:
         sta     LINNUM+1
 L25A6:
         jsr     pager_arm               ; arms --More-- (gates on direct mode,
-                                        ; out_fd == tty, terminal dims). Placed
+                                        ; no CMD redirect, out_fd == tty,
+                                        ; terminal dims). Placed
                                         ; AFTER LIST's arg-dispatch so it
                                         ; doesn't clobber the carry/zero flags
                                         ; that bcc/beq L2581 above need, and

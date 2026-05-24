@@ -503,8 +503,13 @@ chrout_pager:
 ; Gates:
 ;   - direct mode only (CURLIN+1 == $FF). LIST from inside a
 ;     running program keeps upstream's straight-through behavior.
-;   - out_fd == tty_fd (no CMD/SAVE redirect — no --More-- bytes
-;     should land in saved files).
+;   - no CMD redirect (CURDVC == $FF). When the user has done
+;     `OPEN n,"tty:","w":CMD n`, the lfn's fd matches tty_fd so
+;     the out_fd check below can't tell us apart from default
+;     routing — CURDVC is the only reliable signal.
+;   - out_fd == tty_fd (catches SAVE, which swaps out_fd to a
+;     file fd without touching CURDVC — no --More-- bytes should
+;     land in saved files).
 ;   - terminal dims ≥ 2 in each axis (degenerate values disable).
 ;
 ; pager_arm is only reachable from the LIST: entry point, which
@@ -519,6 +524,9 @@ pager_arm:
         lda     CURLIN+1
         cmp     #$FF
         bne     @ret
+        lda     CURDVC                    ; CMD redirect active?
+        cmp     #$FF
+        bne     @ret                      ; yes — user wants raw stream
         lda     out_fd
         cmp     tty_fd
         bne     @ret
