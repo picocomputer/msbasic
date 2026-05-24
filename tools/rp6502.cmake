@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Defines added so IntelliSense can parse cc65 headers; cl65 must not see them.
+# Defines added so IntelliSense can parse cc65; cl65 must not see them.
 set(CC65_INTELLISENSE_ONLY_DEFINES __fastcall__ __cdecl__)
 
 # Skip toolchain config when invoked as a `cmake -P` wrapper script.
