@@ -510,6 +510,7 @@ SETPTRS:
 CLEAR:
         bne     L256A
 CLEARC:
+        jsr     close_all_files
         lda     #<(__TXTTAB_START__+__TXTTAB_SIZE__)
         ldy     #>(__TXTTAB_START__+__TXTTAB_SIZE__)
         sta     FRETOP

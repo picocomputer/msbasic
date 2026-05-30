@@ -175,7 +175,37 @@ CLOSE:
         plx
         lda     #$FF
         sta     __LFTAB_START__,x
+        cpx     CURDVC                  ; closing the active CMD target?
+        bne     @done
+        jsr     CLRCH                   ; restore out_fd/in_fd to tty_fd
+        lda     #$FF
+        sta     CURDVC
 @done:
+        rts
+
+; ============================================================
+; close_all_files — walk LFTAB, close every open slot, then
+; restore default I/O and clear CMD redirection. Called from
+; CLEARC, which is the shared tail for NEW, RUN, and CLEAR — so
+; anything that resets the variable tables also closes files.
+; ============================================================
+close_all_files:
+        ldx     #<(__LFTAB_SIZE__ - 1)
+@loop:
+        lda     __LFTAB_START__,x
+        cmp     #$FF
+        beq     @next
+        phx
+        jsr     ria_close
+        plx
+        lda     #$FF
+        sta     __LFTAB_START__,x
+@next:
+        dex
+        bpl     @loop
+        jsr     CLRCH                   ; default I/O back to tty
+        lda     #$FF
+        sta     CURDVC                  ; cancel any CMD redirection
         rts
 
 ; ============================================================
