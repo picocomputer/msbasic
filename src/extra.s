@@ -57,16 +57,14 @@ ria_close:
 ;   Trashes A/X/Y.
 ; ------------------------------------------------------------
 ria_push_string:
-        jsr     FRMEVL                 ; evaluate expression → FAC
-        jsr     CHKSTR                 ; bomb out if not a string
+        jsr     FRMEVL
+        jsr     CHKSTR
         jsr     FREFAC                 ; A=length, INDEX=ptr to bytes
-        tay                            ; Y=length
-        jeq     lsav_err_baddata       ; empty string ⇒ error (long
-                                       ; branch — lsav_err_baddata is
-                                       ; in the CODE segment, beq's
-                                       ; ±127 range can't reach)
+        tay
+        jeq     lsav_err_baddata       ; empty string ⇒ error. jeq, not beq:
+                                       ; target's in CODE, out of branch range.
 @push_loop:
-        dey                            ; Y goes length-1 → 0
+        dey
         lda     (INDEX),y
         sta     RIA_XSTACK
         tya
@@ -82,8 +80,7 @@ ria_push_string:
 chrout_fd:
         phx
         phy
-        tay                       ; Y holds the byte across RIA_SPIN
-                                  ; (which clobbers A and X but not Y)
+        tay                       ; stash byte in Y; RIA_SPIN clobbers A/X, not Y
 @write_fd:
         sty RIA_XSTACK
         lda out_fd
@@ -95,8 +92,8 @@ chrout_fd:
         lda RIA_A                 ; bytes_written, low byte
         cmp #1
         bcc @write_fd             ; 0 bytes (tx queue full) — re-push, retry
-        tya                       ; A = original byte
-        ply                       ; PLY/PLX preserve A
+        tya                       ; A = original byte (PLY/PLX preserve it)
+        ply
         plx
         rts
 
@@ -109,8 +106,6 @@ chrout_fd:
         ; and tears down any active LOAD/SAVE state, idempotent when
         ; neither is active — so PRINT# write errors get the right
         ; teardown without a spurious close on lsav_fd=0.
-        ; ria_zxstack on a failed op is unneeded (OS already drained)
-        ; but harmless; kept here for explicitness.
         lda out_fd
         cmp tty_fd
         beq @write_drop
@@ -401,11 +396,9 @@ more_erase_str:  .byte $08, $08, $08, $08, $08, $08, $08, $08
 ;                     dec rows_left.
 ;   $0D (CR)        — more_col := 0, emit. No row tracking.
 ;   < $20 (other)   — emit, no tracking.
-;   ≥ $20 printable — if more_col == more_width, this byte wraps
-;                     to col 1 of the NEXT row. Emit explicit
-;                     CR+LF first so terminals without auto-wrap
-;                     still see the break AND any MORE-prompt
-;                     lands at col 0 of the new row. Then dec
+;   ≥ $20 printable — if more_col == more_width, the terminal
+;                     auto-wraps this byte to col 1 of the NEXT
+;                     row (no explicit CR/LF emitted). dec
 ;                     rows_left (the wrap IS the row-advance)
 ;                     and MORE-check the new state — if the
 ;                     wrap put this char on an overflow row,
@@ -449,20 +442,11 @@ chrout_pager:
         bra     @done
 
 @wrap:
-        ; col == width: this byte wraps to col 1 of the next row.
-        ; Emit explicit CRLF first so the wrap is visible on
-        ; terminals without auto-wrap AND so any MORE-prompt
-        ; lands at col 0 of the new row instead of being
-        ; appended to the previous line. Then dec rows_left
-        ; (the wrap is the row-advance) and MORE-check the
-        ; post-dec state.
-        pha                               ; save the printable for @done's
-                                          ; tail-call to chrout_fd
-        lda     #$0D
-        jsr     chrout_fd
-        lda     #$0A
-        jsr     chrout_fd
-        pla
+        ; col == width: terminal auto-wraps this byte to col 1 of the
+        ; next row (no explicit CRLF). The wrap IS the row-advance, so
+        ; dec rows_left and MORE-check post-dec before the byte emits.
+        ; A keeps the printable throughout, so @done emits it into the
+        ; terminal's pending-wrap at col 1 of the new row.
         ldy     more_rows_left
         beq     @wrap_check               ; already 0: skip dec, don't underflow
         dec     more_rows_left
@@ -620,8 +604,7 @@ ria_tab_completion:
         beq @bad
 @no_carry:
         iny
-        bra @parse                ; the multiply checks above kill us
-                                  ; long before iny could wrap Y to 0
+        bra @parse                ; overflow checks above bail long before Y wraps
 
 @bad:
         ; Bail with leftover digits on xstack — caller drains.

@@ -190,6 +190,10 @@ CLOSE:
 ; anything that resets the variable tables also closes files.
 ; ============================================================
 close_all_files:
+        lda     lsav_fd                 ; LOAD/SAVE owns getln_vec/out_fd; a
+        beq     @go                     ; per-line CLEARC during LOAD must not
+        rts                             ; reset getln_vec and sever the feed
+@go:
         ldx     #<(__LFTAB_SIZE__ - 1)
 @loop:
         lda     __LFTAB_START__,x

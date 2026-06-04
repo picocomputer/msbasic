@@ -39,17 +39,17 @@ FORPNT:        .res 2
 LASTOP:        .res 2
 TXPSV:         .res 2
 CPRTYP:        .res 1
-TEMP1:         .res 1
-TEMP2:         .res 1
 FNCNAM:
-TEMP3:         .res 2
+TEMP3:         .res 2 ; spans +DSCPTR
 DSCPTR:        .res 3
 DSCLEN:        .res 2
 JMPADRS      = DSCLEN + 1
 Z52:           .res 1
 ARGEXTENSION:  .res 1
+TEMP1:         .res 1 ; spans +HIGHDS+HIGHTR
 HIGHDS:        .res 2
 HIGHTR:        .res 2
+TEMP2:         .res 1 ; spans +INDX+LOWTR
 INDX:
 TMPEXP:        .res 1
 EXPON:         .res 1
