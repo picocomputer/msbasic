@@ -70,6 +70,17 @@ CAPS <expr>
 
 Sets the readline editor's caps mode at runtime: `0` off, `1` on, `2` invert. Same modes as the `-c<n>` launch flag.
 
+## Time functions
+
+```basic
+CLOCK(<expr>)
+TIME$(<format$>)
+```
+
+`CLOCK(0)` returns seconds since boot as a float with 0.01s resolution. The argument is evaluated and discarded.
+
+`TIME$(f$)` returns the local time formatted by the OS's `strftime`, e.g. `TIME$("%"+CHR$(99))` for `"%c"`. The format string is passed to `strftime` unchanged, and its specifiers are case-sensitive.
+
 ## Editor and runtime conveniences
 
  - `CTRL-C` interrupts a running program or `LIST`.

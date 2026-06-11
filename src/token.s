@@ -77,6 +77,8 @@ UNFNC:
         keyword_addr "VAL", VAL
         keyword_addr "ASC", ASC
         keyword_addr "CHR$", CHRSTR
+        keyword_addr "CLOCK", CLOCK_FN
+        keyword_addr "TIME$", TIMESTR_FN
         keyword_addr "LEFT$", LEFTSTR, TOKEN_LEFTSTR
         keyword_addr "RIGHT$", RIGHTSTR
         keyword_addr "MID$", MIDSTR

@@ -9,27 +9,6 @@ COLD_START:
         cld
         jsr ria_init_io
 
-        ; Seed RNDSEED with 31 bits of OS entropy. RNDSEED is 5 bytes
-        ; of FP: exponent + 4-byte mantissa. Set exponent $80 for a
-        ; well-formed value; first RND(positive) normalizes. Bit 7
-        ; of mantissa byte 1 is the sign bit in storage, so use
-        ; RIA_SREG+1 there — lrand masks 0x7FFFFFFF, so that byte's
-        ; high bit is guaranteed zero (positive). The other three
-        ; bytes carry random bits with no sign-position constraint.
-        lda #$80
-        sta RNDSEED
-        lda #RIA_ATTR_LRAND
-        sta RIA_A
-        lda #RIA_OP_ATTR_GET
-        sta RIA_OP
-        jsr RIA_SPIN
-        sta RNDSEED+2
-        stx RNDSEED+3
-        lda RIA_SREG+1
-        sta RNDSEED+1
-        lda RIA_SREG
-        sta RNDSEED+4
-
         ; CURLIN+1 = $FF marks direct mode; otherwise error handling
         ; would print bogus line numbers from ZP garbage on cold boot.
         lda #$FF
@@ -54,6 +33,36 @@ COLD_START:
         stz auto_run          ; auto-load/RUN state machine (see loadsave.s)
         ldx #TEMPST
         stx TEMPPT
+
+        ; Seed RNDSEED with 31 bits of OS entropy. RNDSEED is 5 bytes
+        ; of FP: exponent + 4-byte mantissa. Set exponent $80 for a
+        ; well-formed value; the RND step below normalizes. Bit 7
+        ; of mantissa byte 1 is the sign bit in storage, so use
+        ; RIA_SREG+1 there — lrand masks 0x7FFFFFFF, so that byte's
+        ; high bit is guaranteed zero (positive). The other three
+        ; bytes carry random bits with no sign-position constraint.
+        lda #$80
+        sta RNDSEED
+        lda #RIA_ATTR_LRAND
+        sta RIA_A
+        lda #RIA_OP_ATTR_GET
+        sta RIA_OP
+        jsr RIA_SPIN
+        sta RNDSEED+2
+        stx RNDSEED+3
+        lda RIA_SREG+1
+        sta RNDSEED+1
+        lda RIA_SREG
+        sta RNDSEED+4
+
+        ; Step the generator once (RND with a positive argument) so
+        ; RNDSEED holds normalized algorithm output rather than raw
+        ; entropy bits. Needs SHIFTSIGNEXT = 0 (set above; FADD's
+        ; shift path sign-extends from it); only FAC's sign matters.
+        lda #$80
+        sta FAC
+        stz FACSIGN
+        jsr RND
 
         stz __TXTTAB_START__  ;synthetic "previous-line terminator"
         jsr SCRTCH            ; falls through to CLEARC, which sets FRETOP

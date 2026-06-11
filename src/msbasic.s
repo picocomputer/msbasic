@@ -15,6 +15,7 @@
 .include "console.s"
 .include "pager.s"
 .include "tabcomp.s"
+.include "time.s"
 .include "token.s"
 .include "error.s"
 .include "message.s"

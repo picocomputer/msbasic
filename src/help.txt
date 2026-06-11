@@ -9,8 +9,10 @@ Key changes and notes:
   Type a line number then press TAB to edit a line.
   LOAD and SAVE file format is plain ASCII.
   Keywords and variable names may be entered in lower case.
-  RND() is seeded with hardware entropy at cold-start.
   CAPS <expr> selects a caps mode; see launch arguments.
+  RND() is seeded with hardware entropy at cold-start.
+  CLOCK(0) returns seconds since boot with 0.01s resolution.
+  TIME$("%"+CHR$(99)) returns the local time formatted by strftime.
 
 Launch arguments:
   -c0     caps mode off (case as typed)
