@@ -77,7 +77,7 @@ TAN:
         ldx     #TEMP3
         ldy     #$00
         jsr     GOMOVMF
-        lda     #TEMP1+(5-BYTES_FP)
+        lda     #TEMP1X
         ldy     #$00
         jsr     LOAD_FAC_FROM_YA
         lda     #$00

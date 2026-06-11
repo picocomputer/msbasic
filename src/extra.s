@@ -1,10 +1,3 @@
-; chrout_buf borrows TEMP1 as its INBUF write offset. Other TEMP1
-; users are LOAD's per-line byte counter (loadsave.s) and FP, whose
-; 5-byte scratch starts at TEMP1 and lives through TEMP1X. Tab
-; completion only runs inside CHRIN's input wait — never overlaps
-; with LOAD (OK-prompt only) or FP (interpretation only).
-inbuf_off = TEMP1
-
 .segment "EXTRA"
 
 ;---------------------------------------------

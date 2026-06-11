@@ -1,7 +1,6 @@
 .segment "CODE"
 
 MANTISSA_BYTES     := BYTES_FP - 1
-TEMP1X             := TEMP1+(5-BYTES_FP)
 
 ; ----------------------------------------------------------------------------
 ; ADD 0.5 TO FAC

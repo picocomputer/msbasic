@@ -41,15 +41,35 @@ TXPSV:         .res 2
 CPRTYP:        .res 1
 FNCNAM:
 TEMP3:         .res 2 ; spans +DSCPTR
+TOKBASE      = TEMP3 ; tokenize/LIST keyword-table base (program.s).
+                     ; TEMP3's only other writers are FPWRT and TAN —
+                     ; expression evaluation, never live during
+                     ; PARSE_INPUT_LINE or LIST. LIST's line numbers go
+                     ; through FOUT, which touches no TEMPs.
 DSCPTR:        .res 3
 DSCLEN:        .res 2
 JMPADRS      = DSCLEN + 1
 Z52:           .res 1
 ARGEXTENSION:  .res 1
 TEMP1:         .res 1 ; spans +HIGHDS+HIGHTR
+inbuf_off    = TEMP1 ; chrout_buf's INBUF write offset (extra.s)
+TEMP1X       = TEMP1+(5-BYTES_FP) ; FP rounding scratch (float.s, trig.s)
+; TEMP1's users are mutually exclusive. FP's 5-byte rounding scratch
+; (TEMP1X..TEMP1X+BYTES_FP-1) is written only by POLYNOMIAL_ODD and
+; TAN — expression evaluation; FOUT touches no TEMPs, so the LINPRTNS
+; call inside tab completion's LIST capture can't clobber inbuf_off.
+; LOAD's per-line counter (loadsave.s, init.s) is live only while
+; getln_vec is hooked to lsav_load_chrin, where tab completion can't
+; fire; line insertion between LOADed lines is safe because BLT uses
+; HIGHDS/HIGHTR (TEMP1+1..+4, not TEMP1) and REASON saves/restores
+; TEMP1..FAC-1 around GARBAG.
 HIGHDS:        .res 2
 HIGHTR:        .res 2
 TEMP2:         .res 1 ; spans +INDX+LOWTR
+TOKBASE_TOKEN = TEMP2 ; tokenizer bin marker, $80/$C0 (program.s).
+                      ; TEMP2's only other writer is the POLYNOMIAL
+                      ; series loop — never live while tokenizing
+                      ; (PARSE_INPUT_LINE makes no calls at all).
 INDX:
 TMPEXP:        .res 1
 EXPON:         .res 1
