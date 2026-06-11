@@ -77,7 +77,7 @@ CLOCK(<expr>)
 TIME$(<format$>)
 ```
 
-`CLOCK(0)` returns seconds since boot as a float with 0.01s resolution. The argument is evaluated and discarded.
+`CLOCK(0)` returns seconds since reset as a float with 0.001s resolution. The argument is evaluated and discarded.
 
 `TIME$(f$)` returns the local time formatted by the OS's `strftime`, e.g. `TIME$("%"+CHR$(99))` for `"%c"`. The format string is passed to `strftime` unchanged, and its specifiers are case-sensitive.
 

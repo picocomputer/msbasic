@@ -2,18 +2,20 @@
 
 ; ------------------------------------------------------------
 ; CLOCK_FN — "CLOCK" function. CLOCK(x) = seconds since boot
-; as a float with 0.01s resolution, from RIA_OP_CLOCK's 32-bit
-; centisecond count. The argument is evaluated and discarded
+; as a float with 0.001s resolution, from the RIA_ATTR_CLK_RUN_MS
+; 31-bit millisecond count. The argument is evaluated and discarded
 ; (FRE/POS convention — UNARY has no zero-arity parse).
 ;   In:  FAC = evaluated argument (any type)
-;   Out: FAC = centiseconds/100, VALTYP numeric for UNARY's CHKNUM
+;   Out: FAC = milliseconds/1000, VALTYP numeric for UNARY's CHKNUM
 ; ------------------------------------------------------------
 CLOCK_FN:
         lda     VALTYP            ; arg is ignored; release a string
         beq     :+                ; temp like FRE does so it doesn't
         jsr     FREFAC            ; pile up in TEMPST
 :       stz     VALTYP            ; result is numeric (CHKNUM runs on return)
-        lda     #RIA_OP_CLOCK
+        lda     #RIA_ATTR_CLK_RUN_MS
+        sta     RIA_A
+        lda     #RIA_OP_ATTR_GET
         sta     RIA_OP
         jsr     RIA_SPIN          ; A=b0(LSB), X=b1, RIA_SREG=b2, RIA_SREG+1=b3
         sta     FAC+4             ; FAC+1..4 = the count as unsigned
@@ -29,13 +31,13 @@ CLOCK_FN:
         sec                       ; positive
         jsr     NORMALIZE_FAC1
         jsr     COPY_FAC_TO_ARG_ROUNDED
-        lda     #<CONHUND
-        ldy     #>CONHUND
+        lda     #<CONTHOU
+        ldy     #>CONTHOU
         ldx     #$00
-        jmp     DIV               ; FAC = ARG/100 (DIV10's entry, float.s)
+        jmp     DIV               ; FAC = ARG/1000 (DIV10's entry, float.s)
 
-CONHUND:
-        .byte   $87,$48,$00,$00,$00     ; 100.0 (cf. CONTEN 10.0 in float.s)
+CONTHOU:
+        .byte   $8A,$7A,$00,$00,$00     ; 1000.0 (cf. CONTEN 10.0 in float.s)
 
 ; ------------------------------------------------------------
 ; TIMESTR_FN — "TIME$" function. TIME$(f$) = local time formatted
