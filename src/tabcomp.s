@@ -23,9 +23,10 @@ chrout_buf:
 ; ria_tab_completion
 ;   Called from CHRIN's wait loop when the user presses TAB.
 ;   Peeks the current readline buffer; if it parses as a single
-;   decimal line number that exists in the program, replaces the
-;   editor's contents with `<lineno> <detokenized text>` so the
-;   user can edit the line in place.
+;   decimal line number (with an optional single trailing space)
+;   that exists in the program, replaces the editor's contents with
+;   `<lineno> <detokenized text>` so the user can edit the line in
+;   place.
 ;   Caller drains xstack after return (paths that bail early may
 ;   leave bytes on it).
 ; ------------------------------------------------------------
@@ -38,14 +39,17 @@ ria_tab_completion:
 
         ; --- Phase B: parse digits off xstack into LINNUM. ---
         ; Pop top-down: chars come out in forward order, terminated
-        ; by 0 (short-stacking past the buffer end). Non-digit,
-        ; overflow, or empty buffer → abort.
+        ; by 0 (short-stacking past the buffer end). One trailing
+        ; space before the terminator is allowed (see @space).
+        ; Non-digit, overflow, or empty buffer → abort.
         stz LINNUM
         stz LINNUM+1
         ldy #$00                  ; digit count
 @parse:
         lda RIA_XSTACK
         beq @parsed               ; 0 terminator → done
+        cmp #' '
+        beq @space                ; one trailing space allowed (see @space)
         sec
         sbc #'0'
         cmp #10
@@ -84,6 +88,14 @@ ria_tab_completion:
 @no_carry:
         iny
         bra @parse                ; overflow checks above bail long before Y wraps
+
+@space:
+        ; Accept a single space after the digits
+        cpy #0
+        beq @bad
+        lda RIA_XSTACK
+        bne @bad                  ; more bytes after the space → not a bare lineno
+        bra @parsed
 
 @bad:
         ; Bail with leftover digits on xstack — caller drains.
