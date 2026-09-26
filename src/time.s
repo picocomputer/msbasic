@@ -47,7 +47,7 @@ CONTHOU:
 ;
 ; The three OS calls chain on the xstack with no RAM buffers:
 ; TIME_GET leaves its 64-bit time_t exactly as LOCALTIME wants
-; its input (LSB on top, short widths zero-fill), and LOCALTIME
+; its input (LSB on top), and LOCALTIME
 ; leaves its 18-byte struct tm exactly as STRFTIME wants beneath
 ; the format (tm byte 0 on top). Only the $00 terminator and the
 ; reversed format string need pushing — the terminator can't

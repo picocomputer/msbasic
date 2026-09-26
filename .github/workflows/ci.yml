@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # The run for each commit to main is in a separate group. With one shared
+  # group, a third push cancels the second run while it waits, and that
+  # commit then gets no release and no failure. Pull request runs still
+  # cancel older runs.
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  basic:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # Steps run without a login shell, so the PATH line that the installer
+      # adds to the profile does not apply to them.
+      - name: Install cc65
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/picocomputer/.github/main/install/cc65.sh | sh
+          echo "$HOME/.rp6502/cc65/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        id: build
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=tools/rp6502.cmake -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Not zipped, so the download is the ROM file itself, as on a release.
+      - uses: actions/upload-artifact@v7
+        if: github.ref != 'refs/heads/main'
+        with:
+          path: build/basic.rp6502
+          archive: false
+
+      - name: Publish the release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: build-${{ steps.build.outputs.sha }}
+          # Without this the tag is created on whatever the default branch
+          # points at when the release is published, not on what was built.
+          target_commitish: ${{ github.sha }}
+          name: Microsoft BASIC ${{ steps.build.outputs.sha }}
+          files: build/basic.rp6502
+          fail_on_unmatched_files: true
+          body: |
+            Microsoft BASIC for the Picocomputer 6502, built with cc65.
+
+            INSTALL basic.rp6502, then HELP basic for usage.
+            INFO basic.rp6502 shows usage without installing.
+
+            https://picocomputer.github.io
