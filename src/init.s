@@ -164,13 +164,22 @@ COLD_START:
         ; Apply caps mode (default or -c<n>); ria_caps_set takes X.
         jsr ria_caps_set
 
-        ; If a filename was found, push it and auto-load.
+        ; If a filename was found, push it and auto-load. Without one,
+        ; ROM:AUTORUN.BAS is loaded when the ROM has it, and DEST stays
+        ; 0 so a failed open is not an error.
         lda DEST+1
-        beq @argv_skip_load
+        bne @argv_named
+        lda #<QT_AUTORUN
+        sta INDEX
+        lda #>QT_AUTORUN
+        sta INDEX+1
+        bra @argv_push_name
+@argv_named:
         lda DEST
         sta INDEX
         lda DEST+1
         sta INDEX+1
+@argv_push_name:
 
         ; Push filename ((INDEX) string) to xstack in reverse.
         ; OS-side terminator short-stacks to 0.
@@ -211,7 +220,12 @@ COLD_START:
 @argv_skip_load:
         jmp RESTART
 @argv_open_failed:
+        lda DEST+1                ; no autorun asset is not an error
+        beq @argv_skip_load
         jmp lsav_err_baddata      ; "?FILE DATA ERROR" then OK
+
+QT_AUTORUN:
+        .byte   "ROM:AUTORUN.BAS", 0
 
 QT_BANNER:
         .byte   "MICROSOFT BASIC", CR, LF, 0

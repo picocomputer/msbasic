@@ -40,6 +40,9 @@ jobs:
           set -euo pipefail
           cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=tools/rp6502.cmake -DCMAKE_BUILD_TYPE=Release
           cmake --build build
+          # Written from inside build/, because a project fetching the ROM
+          # reads names without a folder.
+          ( cd build && sha256sum basic.rp6502 > SHA256SUMS )
           echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       # Not zipped, so the download is the ROM file itself, as on a release.
@@ -58,7 +61,9 @@ jobs:
           # points at when the release is published, not on what was built.
           target_commitish: ${{ github.sha }}
           name: Microsoft BASIC ${{ steps.build.outputs.sha }}
-          files: build/basic.rp6502
+          files: |
+            build/basic.rp6502
+            build/SHA256SUMS
           fail_on_unmatched_files: true
           body: |
             Microsoft BASIC for the Picocomputer 6502, built with cc65.
