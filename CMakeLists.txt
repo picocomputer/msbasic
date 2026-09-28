@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
+
+include(${CMAKE_CURRENT_LIST_DIR}/tools/rp6502.cmake)
 
 project(MSBASIC-RP6502 ASM)
-
-add_subdirectory(tools)
 
 add_executable(basic)
 target_link_options(basic PRIVATE

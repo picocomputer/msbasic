@@ -1,0 +1,57 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "cc65/Debug",
+            "displayName": "cc65/Debug",
+            "description": "cc65, with debug information",
+            "inherits": "base",
+            "binaryDir": "${sourceDir}/build/cc65/debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CC65_TARGET_SYSTEM": "rp6502"
+            }
+        },
+        {
+            "name": "cc65/Release",
+            "displayName": "cc65/Release",
+            "description": "cc65, optimized",
+            "inherits": "base",
+            "binaryDir": "${sourceDir}/build/cc65/release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CC65_TARGET_SYSTEM": "rp6502"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "cc65/Debug",
+            "displayName": "cc65/Debug",
+            "configurePreset": "cc65/Debug",
+            "targets": [
+                "all"
+            ]
+        },
+        {
+            "name": "cc65/Release",
+            "displayName": "cc65/Release",
+            "configurePreset": "cc65/Release",
+            "targets": [
+                "all"
+            ]
+        }
+    ]
+}

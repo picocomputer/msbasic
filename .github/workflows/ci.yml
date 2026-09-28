@@ -38,18 +38,18 @@ jobs:
         id: build
         run: |
           set -euo pipefail
-          cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=tools/rp6502.cmake -DCMAKE_BUILD_TYPE=Release
-          cmake --build build
-          # Written from inside build/, because a project fetching the ROM
-          # reads names without a folder.
-          ( cd build && sha256sum basic.rp6502 > SHA256SUMS )
+          cmake --preset cc65/Release
+          cmake --build --preset cc65/Release
+          # Written from inside the build folder, because a project fetching
+          # the ROM reads names without a folder.
+          ( cd build/cc65/release && sha256sum basic.rp6502 > SHA256SUMS )
           echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       # Not zipped, so the download is the ROM file itself, as on a release.
       - uses: actions/upload-artifact@v7
         if: github.ref != 'refs/heads/main'
         with:
-          path: build/basic.rp6502
+          path: build/cc65/release/basic.rp6502
           archive: false
 
       - name: Publish the release
@@ -62,8 +62,8 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Microsoft BASIC ${{ steps.build.outputs.sha }}
           files: |
-            build/basic.rp6502
-            build/SHA256SUMS
+            build/cc65/release/basic.rp6502
+            build/cc65/release/SHA256SUMS
           fail_on_unmatched_files: true
           body: |
             Microsoft BASIC for the Picocomputer 6502, built with cc65.

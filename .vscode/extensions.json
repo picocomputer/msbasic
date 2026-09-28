@@ -1,6 +1,7 @@
 {
     "recommendations": [
+        "ms-python.debugpy",
         "ms-vscode.cpptools-extension-pack",
-        "seanahan5000.rpw65",
+        "llvm-vs-code-extensions.lldb-dap",
     ]
 }
