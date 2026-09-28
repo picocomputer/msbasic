@@ -117,13 +117,23 @@ lsav_panic:
 ; jmp into the interpreter's input loop. The hook (lsav_load_chrin)
 ; feeds bytes from the file; on EOF it closes the file, restores
 ; the default GETLN, resets the stack, and jmps to RESTART.
+; RUN "filename" is a LOAD that arms auto_run, so the EOF types
+; RUN as it does for the launch argument.
 ; ============================================================
+RUNFILE:
+        lda     #$01
+        bra     lsav_load
 LOAD:
+        lda     #$00
+lsav_load:
+        pha                            ; auto_run, set once the file is open
         jsr     ria_push_string
         lda     #O_RDONLY
         jsr     ria_open
-        jcs     lsav_err_baddata
+        jcs     lsav_err_baddata       ; STKINI in ERROR drops the byte
         sta     lsav_fd
+        pla
+        sta     auto_run
         stz     TEMP1                  ; LOAD borrows TEMP1 as the
                                        ; per-line byte counter (float/
                                        ; string scratch, idle here)

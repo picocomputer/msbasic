@@ -7,6 +7,7 @@ RUN:
         bne     L27CF
         jmp     SETPTRS
 L27CF:
+        jcs     RUNFILE         ; not a line number, so a file name
         jsr     CLEARC
         jmp     L27E9
 

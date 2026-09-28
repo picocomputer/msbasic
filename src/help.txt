@@ -8,6 +8,7 @@ Key changes and notes:
   CTRL-C or SIGINT stops a running program or listing.
   Type a line number then press TAB to edit a line.
   LOAD and SAVE file format is plain ASCII.
+  RUN "name" loads a program and runs it.
   Keywords and variable names may be entered in lower case.
   CAPS <expr> selects a caps mode; see launch arguments.
   RND() is seeded with hardware entropy at cold-start.

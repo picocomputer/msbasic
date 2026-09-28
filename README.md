@@ -61,6 +61,8 @@ LOAD "prog.bas"
 ```
 
 `SAVE` always overwrites; `LOAD` replaces the program in memory.
+`RUN "prog.bas"` loads the file and runs it, so one program can start
+another.
 
 ## Other statements
 
