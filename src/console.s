@@ -291,6 +291,10 @@ CHRIN:
         lda RIA_XSTACK
         cmp #$0A
         bne @ret
+        ; End of the line. The line editor echoes Enter as CR LF, which
+        ; puts the cursor in column 0, so match it in POSX. Otherwise a
+        ; TAB() after INPUT counts the prompt as still on the line.
+        stz POSX
         lda #$0D
 @ret:
         ply                       ; PLY/PLX preserve A

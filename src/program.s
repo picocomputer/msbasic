@@ -525,6 +525,7 @@ STKINI:
         phy                       ; push return-low (was tya; pha)
         stz     OLDTEXT+1
         stz     SUBFLG
+        stz     input_fin_sp      ; no INPUT is parsing a reply now
 L256A:
         rts
 

@@ -236,6 +236,14 @@ INCREMENT_FAC_MANTISSA:
 RTS12:
         rts
 OVERFLOW:
+        ; Armed by INPUT around FIN (input.s L2B34): drop FIN's frames
+        ; and ask again with ?REDO FROM START (or ?BAD DATA for INPUT#).
+        ldx     input_fin_sp
+        beq     @error
+        txs
+        stz     input_fin_sp
+        jmp     RESPERR
+@error:
         ldx     #ERR_OVERFLOW
         jmp     ERROR
 

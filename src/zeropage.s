@@ -101,6 +101,8 @@ more_height:   .res 1   ; LIST pager: terminal rows
 more_width:    .res 1   ; LIST pager: terminal cols
 more_rows_left:.res 1   ; LIST pager: rows of headroom before next --More--
 more_col:      .res 1   ; LIST pager: tracked column 0..more_width
+input_fin_sp:  .res 1   ; INPUT's SP while FIN parses a reply, so OVERFLOW
+                        ; can unwind to ?REDO FROM START; 0 = not armed
 auto_run:      .res 1   ; cold-boot auto-load + RUN state machine
                         ;   0   = idle (normal LOAD)
                         ;   1   = auto-load mode (file read in progress)
