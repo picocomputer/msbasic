@@ -210,7 +210,9 @@ break_to_stop:
 ;   Blocking read of one byte from "con:" (line-cooked). MS BASIC's
 ;   GETLN calls this to assemble interactive lines and INPUT replies;
 ;   "con:" delivers a line ending in LF (per the OS), translated to
-;   CR here so BASIC's $0D line-terminator check matches.
+;   CR here so BASIC's $0D line-terminator check matches. At that LF
+;   POSX is zeroed when output is the terminal, since the line editor
+;   echoed Enter as CR LF (unless RIA_ATTR_RLN_SUPPRESS_NL is set).
 ;
 ;   While waiting for the first byte (user still typing), polls two
 ;   sidechannels: RIA_ATTR_SIGINT for break (Ctrl-C at the OK prompt
@@ -294,7 +296,13 @@ CHRIN:
         ; End of the line. The line editor echoes Enter as CR LF, which
         ; puts the cursor in column 0, so match it in POSX. Otherwise a
         ; TAB() after INPUT counts the prompt as still on the line.
+        ; Under CMD to a file, POSX is the file's column, which saw no
+        ; echo, so leave it.
+        lda out_fd
+        cmp tty_fd
+        bne @cr
         stz POSX
+@cr:
         lda #$0D
 @ret:
         ply                       ; PLY/PLX preserve A

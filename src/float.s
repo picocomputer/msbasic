@@ -237,7 +237,8 @@ RTS12:
         rts
 OVERFLOW:
         ; Armed by INPUT around FIN (input.s L2B34): drop FIN's frames
-        ; and ask again with ?REDO FROM START (or ?BAD DATA for INPUT#).
+        ; and go to RESPERR, which asks again with ?REDO FROM START, or
+        ; raises ?FILE DATA when I/O is redirected (INPUT#, CMD).
         ldx     input_fin_sp
         beq     @error
         txs

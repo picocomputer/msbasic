@@ -10,6 +10,11 @@
 ; "?REDO FROM START" and re-runs the INPUT statement (same as a
 ; malformed numeric response); for a string variable it assigns ""
 ; and continues.
+;
+; A numeric reply too big for a float, like 1E39, also prints
+; "?REDO FROM START" instead of stopping with ?OVERFLOW ERROR (see
+; L2B34 and OVERFLOW). READ keeps ?OVERFLOW; INPUT# and INPUT under
+; CMD get ?FILE DATA, as for a malformed number.
 
 .segment "CODE"
 
@@ -245,9 +250,10 @@ L2B34:
         ; A reply too big for a float, like 1E39, makes FIN jump to
         ; OVERFLOW. For INPUT, leave our SP in input_fin_sp so OVERFLOW
         ; unwinds to RESPERR and asks again, the same as any other bad
-        ; number, instead of stopping the program. READ and GET keep
-        ; ?OVERFLOW. ldx, tsx and stx leave A and C for FIN. SP is never
-        ; 0 here, since the GOSUB and FOR checks keep stack headroom.
+        ; number, instead of stopping the program. READ keeps ?OVERFLOW
+        ; (GET's one character can't overflow). ldx, tsx and stx leave A
+        ; and C for FIN. SP is never 0 here, since the GOSUB and FOR
+        ; checks keep stack headroom.
         ldx     INPUTFLG
         bne     @fin
         tsx
